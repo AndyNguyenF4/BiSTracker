@@ -6,7 +6,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
 
-namespace SamplePlugin.Windows;
+namespace BiSTracker.Windows;
 
 public class MainWindow : Window, IDisposable
 {
@@ -54,5 +54,6 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.Text("Image not found.");
         }
+
     }
 }
