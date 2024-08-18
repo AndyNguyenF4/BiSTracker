@@ -5,6 +5,8 @@ using System.IO;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using BiSTracker.Windows;
+using System;
+using Lumina;
 
 namespace BiSTracker;
 
@@ -14,23 +16,30 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
 
-    private const string CommandName = "/pmycommand";
+    [PluginService] internal static IDataManager DataManager { get; private set; } = null!; //gets lumina object
 
+    private const string CommandName = "/bis";
     public Configuration Configuration { get; init; }
 
     public readonly WindowSystem WindowSystem = new("BiSTracker");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
 
+    private DirectoryInfo ConfigDirectory;
+
     public Plugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+
+        Data.LoadSheets(DataManager!.Excel);
+
+        ConfigDirectory = PluginInterface.ConfigDirectory;
 
         // you might normally want to embed resources and load them from the manifest stream
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
 
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(this, goatImagePath);
+        MainWindow = new MainWindow(this, goatImagePath, ConfigDirectory);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);

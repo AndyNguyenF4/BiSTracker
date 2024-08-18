@@ -1,0 +1,31 @@
+
+
+using System;
+using System.IO;
+using System.Net.Http;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.Havok.Common.Base.Types;
+
+class HelperFunctions{
+    static void etroImport(string etroURL, DirectoryInfo directory){
+        HttpClient client = new HttpClient();
+
+        try{
+            string etroResult = client.GetAsync("https://etro.gg/api/gearsets/903fafde-f0bf-4e99-9d80-4aceab2d36f2").Result.ToString();
+            Console.WriteLine(etroResult);
+
+            string[] etroURLSplit = etroResult.Split("/");
+
+            string folder = @directory.ToString();
+            
+            
+            string fileName = "903fafde-f0bf-4e99-9d80-4aceab2d36f2.txt";
+            string fullPath = folder+fileName;
+        }
+
+        catch (HttpRequestException e){
+            Console.WriteLine("\nException Caught!");
+            Console.WriteLine("Message :{0} ", e.Message);
+        }
+    }
+}

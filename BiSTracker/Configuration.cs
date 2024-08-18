@@ -18,3 +18,5 @@ public class Configuration : IPluginConfiguration
         Plugin.PluginInterface.SavePluginConfig(this);
     }
 }
+
+
