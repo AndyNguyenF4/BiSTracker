@@ -1,0 +1,14 @@
+Base Functionality
+Take in an Etro Link
+Display Etro Gearset in Window
+
+EXTRA Functionality
+Highlight green/red over gear or use a checkmark to indicate having pieces of BiS
+^ requires grabbing and reading player's current gear/inventory
+Display total and/or remaining tomes and weeks of capping
+Display total and/or remaining books for twine/glazes
+
+Current Tasks
+Parse JSON and input gear into gearset/melded item/melded materia structs
+Display said gearset with melds in the main window
+Make a menu to access saved gearsets/JSONs and a way to delete them

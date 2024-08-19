@@ -113,6 +113,7 @@ public class MainWindow : Window, IDisposable
         }
 
         
+        //sample plugin stuff
         ImGui.Text($"The random config bool is {Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
 
         if (ImGui.Button("Show Settings"))
@@ -157,8 +158,6 @@ public class MainWindow : Window, IDisposable
             etroID = etroURL[i] + etroID;
         }
 
-    
-        
         etroImportStringSplit = etroURL.Split("gearsets/");
 
 
