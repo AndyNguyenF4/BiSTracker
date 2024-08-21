@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Numerics;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Utility;
@@ -15,9 +16,12 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Text.Json;
+using System.Collections.Generic;
+using System.Linq;
+using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace BiSTracker.Windows;
-
 
 public class MainWindow : Window, IDisposable
 {
@@ -26,6 +30,8 @@ public class MainWindow : Window, IDisposable
 
     private string etroID = "";
     private string[] etroImportStringSplit = new string[2];
+
+    private bool buttonPressed;
 
     static readonly HttpClient client = new HttpClient();
 
@@ -36,6 +42,9 @@ public class MainWindow : Window, IDisposable
 
     //increment to 13 for food later
     private uint[] gearID = {43107, 43076, 43154, 43155, 43079, 43157, 0, 43162, 43090, 43172, 43100, 43177};
+
+    private Dictionary<string, Gearset> savedGearsets;
+    public Gearset? currentGearset;
     private Plugin Plugin;
 
     // We give this window a hidden ID using ##
@@ -53,7 +62,14 @@ public class MainWindow : Window, IDisposable
         GoatImagePath = goatImagePath;
         Plugin = plugin;
         savedSetsDirectory = directory;
-        // client = new HttpClient();
+        buttonPressed = false;
+        savedGearsets = new Dictionary<string, Gearset>();
+
+        // if (lastLoadedSet != null){
+        //     currentGearset = lastLoadedSet;
+        // }
+
+        currentGearset = null;
     }
 
     public void Dispose() { }
@@ -61,57 +77,38 @@ public class MainWindow : Window, IDisposable
     public override void Draw()
     {
         //etro links are 60 chars long, 61 for C# esc char?
-        
+
         ImGui.BeginGroup();
         ImGui.InputTextWithHint("##EtroImportTextBox", "Insert Etro URL and click \"Import\"", ref etroImportString, 61);
         ImGui.SameLine();
         if(ImGui.Button("Import" + "###EtroImportButton")){
          
-        //if import string >= 0 then attempt to read etro link and then reset string
+            //if import string >= 0 then attempt to read etro link and then reset string
             if(etroImportString.Length > 0){
                 etroImport(etroImportString, savedSetsDirectory);
                 placeholder = etroImportString;
                 etroImportString = "";
+                buttonPressed = true;
+                savedGearsets.Add(etroID, currentGearset);
+            }
+        
+            if (savedGearsets.Count() > 0){
+                if(ImGui.CollapsingHeader("Gearsets")){
+                    foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
+                        // ImGui.Text("Gearsets");
+                        ImGui.Selectable(kvp.Value.name);
+                        DrawItems(kvp.Value);
+                        
+                    }
+                }
             }
         }
 
         ImGui.Text(placeholder);
+
         ImGui.Text(savedSetsDirectory.ToString());
 
         ImGui.EndGroup();
-        
-        if(ImGui.CollapsingHeader("Items", ImGuiTreeNodeFlags.DefaultOpen)){
-
-            float scale = ImGui.GetFontSize() / 17;
-            for (int i = 0; i < gearID.Length; i++){
-                if (gearID[i] == 0){
-                    //should skip over null gear update later
-                    continue;
-                }
-                
-                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearID[i]);
-                var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
-                int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
-                if (icon != null){
-                    ImGui.Image(icon.ImGuiHandle, new Vector2(height, height));
-                    ImGui.SameLine();
-                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
-                }
-
-                ImGui.Text(rawItem.Name);
-
-                if (rawItem.ExtendedItemLevel.Value is ExtendedItemLevel level){
-                    ImGui.SameLine();
-                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
-                    
-                    ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
-                }
-            }
-
-
-
-        }
-
         
         //sample plugin stuff
         ImGui.Text($"The random config bool is {Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
@@ -148,8 +145,7 @@ public class MainWindow : Window, IDisposable
 		return Plugin.TextureProvider.GetFromGameIcon(new GameIconLookup(id, hq));
 	}
 
-    protected void etroImport(string etroURL, DirectoryInfo directory){
-
+    protected string etroImport(string etroURL, DirectoryInfo directory){
         for (int i = etroURL.Length-1; i >= 0; i--){
             if (etroURL[i] == '/'){
                 break;
@@ -160,55 +156,85 @@ public class MainWindow : Window, IDisposable
 
         etroImportStringSplit = etroURL.Split("gearsets/");
 
-
-        //FIGURE OUT WHY THIS DOESNT WORK
         Task.Run(async () =>
         {
-            using HttpResponseMessage response = await client.GetAsync("https://etro.gg/api/gearsets/" + etroID); //etroImportStringSplit[^1]
-            // using HttpResponseMessage response = await client.GetAsync("https://etro.gg/api/gearsets/903fafde-f0bf-4e99-9d80-4aceab2d36f2");
-            // response.EnsureSuccessStatusCode();
+            using HttpResponseMessage response = await client.GetAsync("https://etro.gg/api/gearsets/" + etroID);
             string responseBody = await response.Content.ReadAsStringAsync();
 
             File.WriteAllText(directory + "\\" + etroID + ".json", responseBody);
             etroID = "";
-            // Task<string> response = client.GetStringAsync("https://etro.gg/api/gearsets/903fafde-f0bf-4e99-9d80-4aceab2d36f2");
-            // // response.EnsureSuccessStatusCode();
-            // var asStringTask = response.Content.ReadAsStringAsync();
-            // asStringTask.wait();
-            // return responseBody;
-            // placeholder = responseBody;
-        
-
         });
+
+        this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
+
+        return etroID;
     }
 
-        // return "failed";
+    protected static EtroGearsetParse etroJsonToObject(string etroID, DirectoryInfo directory){
+        string fullPath = directory + "\\" + etroID + ".json";
+        string jsonString = File.ReadAllText(fullPath);
 
-        // try{
-        //     HttpResponseMessage response = await client.GetAsync("https://etro.gg/api/gearsets/903fafde-f0bf-4e99-9d80-4aceab2d36f2");
-        //     response.EnsureSuccessStatusCode();
-        //     string responseBody = await response.Content.ReadAsStringAsync();
-        //     return responseBody;
+        return JsonSerializer.Deserialize<EtroGearsetParse>(jsonString); 
+    }
+    protected static Gearset etroGearToGearSet(EtroGearsetParse inputGear){
+        return new Gearset(inputGear);
+    }
 
+    //button should update a variable for a currentSet and drawItems should utilize
+    //this to render the currentSet instead of rendering all sets
+    //waymark library has imgui.selectable, good reference
+    public void DrawItems(Gearset gearsetTest){
+        Type type = gearsetTest.GetType();
+        PropertyInfo[] properties = type.GetProperties();
+        
+        if(ImGui.CollapsingHeader("Items", ImGuiTreeNodeFlags.DefaultOpen)){
 
-        //     // using HttpResponseMessage etroResult = client.GetStringAsync("https://etro.gg/api/gearsets/903fafde-f0bf-4e99-9d80-4aceab2d36f2");
-        //     // string etroJson = etroResult.Content.ReadAsStringAsync();
-        //     // return etroJson;
-        //     // Console.WriteLine(etroResult);
+            float scale = ImGui.GetFontSize() / 17;
 
-        //     // string[] etroURLSplit = etroResult.Split("/");
+            foreach (PropertyInfo property in properties){
+                string name = property.Name;
+                object value = property.GetValue(gearsetTest);
 
-        //     // string folder = @directory.ToString();
+                if (value == null){
+                    continue;
+                }
+
+                if (property.PropertyType == typeof(MeldedItem)){
+                    MeldedItem gearsetItem = (MeldedItem)value;
+
+                    ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); //gearID[i] originally in here
+                    var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
+                    int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
+                    if (icon != null){
+                        ImGui.Image(icon.ImGuiHandle, new Vector2(height, height));
+                        ImGui.SameLine();
+                        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
+                    }
+
+                    ImGui.Text(rawItem.Name);
+
+                    if (rawItem.ExtendedItemLevel.Value is ExtendedItemLevel level){
+                        ImGui.SameLine();
+                        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
+                        
+                        ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
+                    }
+                }
+            }
+        }
+    }
+
+    protected unsafe InventoryContainer* GetInventoryContainer(){
+        return InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
+    }
+
+    protected unsafe void bisComparison(Gearset givenGearset){
+        InventoryContainer* inventory = GetInventoryContainer();
+
+        for (uint i = 0; i < inventory->Size; i++){
+            var item = inventory->Items[i];
             
-            
-        //     // string fileName = "903fafde-f0bf-4e99-9d80-4aceab2d36f2.txt";
-        //     // string fullPath = folder+fileName;
-        // }
+        }
 
-        // catch (HttpRequestException e){
-        //     Console.WriteLine("\nException Caught!");
-        //     Console.WriteLine("Message :{0} ", e.Message);
-        //     return "failed connection";
-        // }
-
+    }
 }

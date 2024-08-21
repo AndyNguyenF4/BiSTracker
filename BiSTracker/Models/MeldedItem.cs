@@ -2,11 +2,17 @@ using BiSTracker.Sheets;
 
 namespace BiSTracker.Models;
 
-internal record struct MeldedItem(
-	uint itemID,
-	MeldedMateria[] Melds
+public class MeldedItem{
+	public MeldedItem(uint itemID, MeldedMateria[] meldedMateria){	
+		this.itemID = itemID;
+		this.meldedMateria = meldedMateria;
+		this.hasPiece = false;
+  	}
+	
+	public uint itemID;
+	public MeldedMateria[] meldedMateria;
+	public bool hasPiece;
 	// bool HighQuality,
-) {
 
 	public ExtendedItem? Row() {
 		if (!Data.CheckSheets())
@@ -15,3 +21,12 @@ internal record struct MeldedItem(
 	}
 
 };
+// } {
+
+// 	public ExtendedItem? Row() {
+// 		if (!Data.CheckSheets())
+// 			return null;
+// 		return Data.ItemSheet.GetRow(itemID);
+// 	}
+
+// };

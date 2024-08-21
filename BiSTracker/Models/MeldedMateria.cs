@@ -3,10 +3,12 @@ using Lumina.Excel.GeneratedSheets;
 
 namespace BiSTracker.Models;
 
-internal record struct MeldedMateria(
-	ushort materiaID,
-	byte materiaSlot
-){
+public class MeldedMateria{
+	    public MeldedMateria(uint materiaID){
+        this.materiaID = materiaID;
+    }
+	
+	public uint materiaID;
 
 	public Materia? Row() {
 		if (!Data.CheckSheets())
@@ -14,4 +16,13 @@ internal record struct MeldedMateria(
 		return Data.MateriaSheet.GetRow(materiaID);
 	}
 
-};
+}
+// {
+
+// 	public Materia? Row() {
+// 		if (!Data.CheckSheets())
+// 			return null;
+// 		return Data.MateriaSheet.GetRow(materiaID);
+// 	}
+
+// };

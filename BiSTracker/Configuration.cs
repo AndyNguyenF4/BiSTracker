@@ -1,4 +1,5 @@
-﻿using Dalamud.Configuration;
+﻿using BiSTracker.Models;
+using Dalamud.Configuration;
 using Dalamud.Plugin;
 using System;
 
@@ -11,6 +12,9 @@ public class Configuration : IPluginConfiguration
 
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+
+    //instead make this be a string 
+    // public Gearset? lastGearset {get; set;} = null;
 
     // the below exist just to make saving less cumbersome
     public void Save()
