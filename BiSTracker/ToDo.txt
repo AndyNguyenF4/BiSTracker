@@ -4,14 +4,14 @@ Display Etro Gearset in Window - COMPLETED
 
 EXTRA Functionality
 Highlight green/red over gear or use a checkmark to indicate having pieces of BiS - PARTIAL
-^ requires grabbing and reading player's current gear/inventory
+^ requires grabbing and reading player's current gear/inventory (FINISH READING ALL INVENTORY SLOTS NOT JUST EQUIPPED ITEMS)
 Display total and/or remaining tomes and weeks of capping
 Display total and/or remaining books for twine/glazes
 
 Current Tasks
 Parse JSON and input gear into gearset/melded item/melded materia structs - COMPLETED
 Display said gearset with melds in the main window - TODO
-Make a menu to access saved gearsets/JSONs and a way to delete them - PARTIAL
+Make a menu to access saved gearsets/JSONs and a way to delete them - COMPLETED
 Config to load in sets on initial launch - COMPLETED?
 
 https://etro.gg/gearset/01f9c125-ff1e-4637-b2b4-8d3e01c48d8f 2.42

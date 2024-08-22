@@ -38,6 +38,9 @@ public class MainWindow : Window, IDisposable
 
     private string placeholder ="";
 
+    private bool clickedDelete;
+    // private bool confirmDelete;
+
     private DirectoryInfo savedSetsDirectory;
     // protected PluginUI Ui { get;}
 
@@ -70,6 +73,8 @@ public class MainWindow : Window, IDisposable
         }
 
         currentGearset = null;
+        clickedDelete = false;
+        // confirmDelete = false;
     }
 
     public void Dispose() {}
@@ -94,6 +99,8 @@ public class MainWindow : Window, IDisposable
                 if(ImGui.CollapsingHeader("Gearsets##GearsetsCollapsingHeader")){
                     foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
                         if(ImGui.Selectable(kvp.Value.name)){
+                            // clickedGearset = true;
+                            // ImGui.SameLine();
                             currentGearset = kvp.Value;                            
                         }
                     }
@@ -116,6 +123,7 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
             bisComparison(currentGearset);
             DrawItems(currentGearset);
+            DrawDeleteButton();
         }
 
         ImGui.Text(placeholder);
@@ -267,9 +275,66 @@ public class MainWindow : Window, IDisposable
             }
         // }
     }
+    
+    public void DrawDeleteButton(){
+        
+        var color = System.Drawing.Color.FromArgb(217, 39, 39, 204);
+        ImGui.PushStyleColor(ImGuiCol.Text, 0xFC5A5AFF); // EE6244FF
+        
+        if (ImGui.Button("Delete Gearset?")){
+            clickedDelete = true;
+            // DrawDeletionConfirmationWindow(ref clickedDelete);
+        }
+        ImGui.PopStyleColor();
+
+        if(clickedDelete){
+            DrawDeletionConfirmationWindow(ref clickedDelete);
+        }
+
+        // ImGui.PopStyleColor();
+    }
 
     protected unsafe InventoryContainer* GetInventoryContainer(){
         return InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
+    }
+
+    protected bool DrawDeletionConfirmationWindow(ref bool isVisible)
+    {
+        if (!isVisible)
+            return false;
+
+        var ret = false;
+
+        ImGui.SetNextWindowSize(ImGuiHelpers.ScaledVector2(280f, 120f));
+        ImGui.Begin("Gearset Deletion Confirmation", ImGuiWindowFlags.NoResize);
+
+        ImGui.Text("Are you sure you want to delete this?");
+        ImGui.Text("This cannot be undone.");
+        ImGui.PushStyleColor(ImGuiCol.Text, 0xFC5A5AFF);
+        if (ImGui.Button("Yes"))
+        {
+            isVisible = false;
+            ret = true;
+        }
+        ImGui.PopStyleColor();
+
+        ImGui.SameLine();
+        if (ImGui.Button("No"))
+        {
+            isVisible = false;
+        }
+
+        if (ret){
+            savedGearsets.Remove(currentGearset.etroID);
+            File.Delete(savedSetsDirectory + "\\" + currentGearset.etroID + ".json");
+            Plugin.Configuration.availableGearsets.Remove(currentGearset.etroID);
+            Plugin.Configuration.Save();
+            currentGearset = null;
+        }
+
+        ImGui.End();
+
+        return ret;
     }
 
 // maybe use item level to narrow down search
