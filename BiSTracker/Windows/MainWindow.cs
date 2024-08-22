@@ -32,9 +32,9 @@ public class MainWindow : Window, IDisposable
     private string etroID = "";
     private string[] etroImportStringSplit = new string[2];
 
-    private bool buttonPressed;
+    // private bool buttonPressed;
 
-    static readonly HttpClient client = new HttpClient();
+    private static readonly HttpClient client = new HttpClient();
 
     private string placeholder ="";
 
@@ -42,11 +42,11 @@ public class MainWindow : Window, IDisposable
     // protected PluginUI Ui { get;}
 
     //increment to 13 for food later
-    private uint[] gearID = {43107, 43076, 43154, 43155, 43079, 43157, 0, 43162, 43090, 43172, 43100, 43177};
+    // private uint[] gearID = {43107, 43076, 43154, 43155, 43079, 43157, 0, 43162, 43090, 43172, 43100, 43177};
 
     private Dictionary<string, Gearset> savedGearsets;
     public Gearset? currentGearset;
-    private Plugin Plugin;
+    private readonly Plugin Plugin;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -63,7 +63,7 @@ public class MainWindow : Window, IDisposable
         GoatImagePath = goatImagePath;
         Plugin = plugin;
         savedSetsDirectory = directory;
-        buttonPressed = false;
+        // buttonPressed = false;
         savedGearsets = new Dictionary<string, Gearset>();
 
         // if (lastLoadedSet != null){
@@ -83,38 +83,30 @@ public class MainWindow : Window, IDisposable
         ImGui.InputTextWithHint("##EtroImportTextBox", "Insert Etro URL and click \"Import\"", ref etroImportString, 61);
         ImGui.SameLine();
         if(ImGui.Button("Import" + "###EtroImportButton")){
-         
+        
             //if import string >= 0 then attempt to read etro link and then reset string
             if(etroImportString.Length > 0){
                 etroImport(etroImportString, savedSetsDirectory);
-                placeholder = etroImportString;
-                etroImportString = "";
-                buttonPressed = true;
-                savedGearsets.Add(etroID, currentGearset);
-                bisComparison(currentGearset);
             }
         }
         
-        if (savedGearsets.Count() > 0){
+
+
+        if (savedGearsets.Count > 0){
             if(ImGui.CollapsingHeader("Gearsets")){
                 foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
                     if(ImGui.Selectable(kvp.Value.name)){
-                    // bisComparison(kvp.Value);
-                        // DrawItems(kvp.Value);
                         currentGearset = kvp.Value;
                     }
                 }
             }
         }
 
-        if (ImGui.CollapsingHeader("Items", ImGuiTreeNodeFlags.DefaultOpen)){
+
+        if (currentGearset != null && ImGui.CollapsingHeader("Items" + $"({currentGearset.name})", ImGuiTreeNodeFlags.DefaultOpen)){
             DrawItems(currentGearset);
         }
-        
 
-        // bisComparison(currentGearset);
-
-        // ImGui.Text(savedGearsets.Count().ToString());
         ImGui.Text(placeholder);
 
         ImGui.Text(savedSetsDirectory.ToString());
@@ -156,7 +148,7 @@ public class MainWindow : Window, IDisposable
 		return Plugin.TextureProvider.GetFromGameIcon(new GameIconLookup(id, hq));
 	}
 
-    protected string etroImport(string etroURL, DirectoryInfo directory){
+    protected void etroImport(string etroURL, DirectoryInfo directory){
         for (int i = etroURL.Length-1; i >= 0; i--){
             if (etroURL[i] == '/'){
                 break;
@@ -172,21 +164,18 @@ public class MainWindow : Window, IDisposable
             using HttpResponseMessage response = await client.GetAsync("https://etro.gg/api/gearsets/" + etroID);
             string responseBody = await response.Content.ReadAsStringAsync();
 
-            // if(response.IsSuccessStatusCode){
+            if(response.IsSuccessStatusCode){
                 File.WriteAllText(directory + "\\" + etroID + ".json", responseBody);
-            // }
+                Gearset temp = etroGearToGearSet(etroJsonToObject(etroID, directory));
+                // this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
+                savedGearsets.Add(etroID, temp);
+                bisComparison(temp);
+                this.currentGearset = temp;
+            }
             etroID = "";
         });
-        // .ContinueWith((previousTask) =>
-        // {
-        //     this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
-        //     // savedGearsets.Add(etroID, currentGearset);
-        //     // bisComparison(currentGearset);
-        // });
 
-        this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
-
-        return etroID;
+        // this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
     }
 
     protected static EtroGearsetParse etroJsonToObject(string etroID, DirectoryInfo directory){
@@ -195,6 +184,7 @@ public class MainWindow : Window, IDisposable
 
         return JsonSerializer.Deserialize<EtroGearsetParse>(jsonString); 
     }
+
     protected static Gearset etroGearToGearSet(EtroGearsetParse inputGear){
         return new Gearset(inputGear);
     }
@@ -211,7 +201,7 @@ public class MainWindow : Window, IDisposable
             float scale = ImGui.GetFontSize() / 17;
 
             foreach (PropertyInfo property in properties){
-                string name = property.Name;
+                // string name = property.Name;
                 object value = property.GetValue(gearsetTest);
 
                 if (value == null){
