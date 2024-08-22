@@ -7,6 +7,7 @@ using Dalamud.Plugin.Services;
 using BiSTracker.Windows;
 using System;
 using Lumina;
+using BiSTracker.Models;
 
 namespace BiSTracker;
 
@@ -26,6 +27,8 @@ public sealed class Plugin : IDalamudPlugin
     private MainWindow MainWindow { get; init; }
 
     private DirectoryInfo ConfigDirectory;
+
+    // private Gearset loadedGearsets;
 
     public Plugin()
     {

@@ -2,6 +2,7 @@
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 using System;
+using System.Collections.Generic;
 
 namespace BiSTracker;
 
@@ -12,6 +13,14 @@ public class Configuration : IPluginConfiguration
 
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+
+    // public string[]? availableGearsets {get; set;} = null;
+
+    // public Dictionary<string, Gearset>? availableGearsets {get; set;} = null;
+    // public List<string> availableGearsets {get; set;} = null;
+
+    public HashSet<string>? availableGearsets {get; set;} = new HashSet<string>();
+
 
     //instead make this be a string 
     // public Gearset? lastGearset {get; set;} = null;

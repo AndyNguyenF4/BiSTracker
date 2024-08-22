@@ -44,9 +44,9 @@ public class MainWindow : Window, IDisposable
     //increment to 13 for food later
     // private uint[] gearID = {43107, 43076, 43154, 43155, 43079, 43157, 0, 43162, 43090, 43172, 43100, 43177};
 
-    private Dictionary<string, Gearset> savedGearsets;
+    private Dictionary<string, Gearset>? savedGearsets;
     public Gearset? currentGearset;
-    private readonly Plugin Plugin;
+    private Plugin Plugin;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -63,18 +63,16 @@ public class MainWindow : Window, IDisposable
         GoatImagePath = goatImagePath;
         Plugin = plugin;
         savedSetsDirectory = directory;
-        // buttonPressed = false;
         savedGearsets = new Dictionary<string, Gearset>();
 
-        // if (lastLoadedSet != null){
-        //     currentGearset = lastLoadedSet;
-        // }
+        foreach (var set in plugin.Configuration.availableGearsets){
+            savedGearsets.Add(set, etroImport(set));
+        }
 
         currentGearset = null;
     }
 
-    public void Dispose() { }
-
+    public void Dispose() {}
     public override void Draw()
     {
         //etro links are 60 chars long, 61 for C# esc char?
@@ -91,19 +89,32 @@ public class MainWindow : Window, IDisposable
         }
         
 
-
-        if (savedGearsets.Count > 0){
-            if(ImGui.CollapsingHeader("Gearsets")){
-                foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
-                    if(ImGui.Selectable(kvp.Value.name)){
-                        currentGearset = kvp.Value;
+        if (savedGearsets != null){
+            if (savedGearsets.Count > 0){
+                if(ImGui.CollapsingHeader("Gearsets##GearsetsCollapsingHeader")){
+                    foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
+                        if(ImGui.Selectable(kvp.Value.name)){
+                            currentGearset = kvp.Value;                            
+                        }
                     }
                 }
             }
         }
 
 
-        if (currentGearset != null && ImGui.CollapsingHeader("Items" + $"({currentGearset.name})", ImGuiTreeNodeFlags.DefaultOpen)){
+        // if (currentGearset != null && ImGui.CollapsingHeader("Items" + $"({currentGearset.name})##GearsetItemsCollapsingHeader", ImGuiTreeNodeFlags.DefaultOpen)){
+        //     bisComparison(currentGearset);
+        //     DrawItems(currentGearset);
+        // }
+        if (currentGearset != null){
+            ImGui.Spacing();
+            ImGui.Spacing();
+            ImGui.Spacing();
+            ImGui.Spacing();
+            ImGui.Spacing();
+            ImGui.Spacing();
+            ImGui.Spacing();
+            bisComparison(currentGearset);
             DrawItems(currentGearset);
         }
 
@@ -122,6 +133,7 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.Spacing();
+     
 
         ImGui.Text("Have a goat:");
         var goatImage = Plugin.TextureProvider.GetFromFile(GoatImagePath).GetWrapOrDefault();
@@ -136,6 +148,10 @@ public class MainWindow : Window, IDisposable
             ImGui.Text("Image not found.");
         }
 
+        //clears gearsets saved in config
+        // Plugin.Configuration.availableGearsets.Clear();
+        // Plugin.Configuration.Save();
+
     }
 
 	protected ISharedImmediateTexture? GetIcon(Item? item, bool hq = false) {
@@ -148,6 +164,10 @@ public class MainWindow : Window, IDisposable
 		return Plugin.TextureProvider.GetFromGameIcon(new GameIconLookup(id, hq));
 	}
 
+
+    protected Gearset etroImport(string etroID){
+        return etroGearToGearSet(etroJsonToObject(etroID, savedSetsDirectory));
+    }
     protected void etroImport(string etroURL, DirectoryInfo directory){
         for (int i = etroURL.Length-1; i >= 0; i--){
             if (etroURL[i] == '/'){
@@ -171,6 +191,9 @@ public class MainWindow : Window, IDisposable
                 savedGearsets.Add(etroID, temp);
                 bisComparison(temp);
                 this.currentGearset = temp;
+
+                Plugin.Configuration.availableGearsets.Add(etroID);
+                Plugin.Configuration.Save();
             }
             etroID = "";
         });
