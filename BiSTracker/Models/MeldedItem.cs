@@ -20,6 +20,8 @@ public class MeldedItem{
 		return Data.ItemSheet.GetRow(itemID);
 	}
 
+
+
 };
 // } {
 

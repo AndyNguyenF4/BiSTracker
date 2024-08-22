@@ -20,6 +20,7 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Common.Lua;
 
 namespace BiSTracker.Windows;
 
@@ -90,20 +91,30 @@ public class MainWindow : Window, IDisposable
                 etroImportString = "";
                 buttonPressed = true;
                 savedGearsets.Add(etroID, currentGearset);
+                bisComparison(currentGearset);
             }
+        }
         
-            if (savedGearsets.Count() > 0){
-                if(ImGui.CollapsingHeader("Gearsets")){
-                    foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
-                        // ImGui.Text("Gearsets");
-                        ImGui.Selectable(kvp.Value.name);
-                        DrawItems(kvp.Value);
-                        
+        if (savedGearsets.Count() > 0){
+            if(ImGui.CollapsingHeader("Gearsets")){
+                foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
+                    if(ImGui.Selectable(kvp.Value.name)){
+                    // bisComparison(kvp.Value);
+                        // DrawItems(kvp.Value);
+                        currentGearset = kvp.Value;
                     }
                 }
             }
         }
 
+        if (ImGui.CollapsingHeader("Items", ImGuiTreeNodeFlags.DefaultOpen)){
+            DrawItems(currentGearset);
+        }
+        
+
+        // bisComparison(currentGearset);
+
+        // ImGui.Text(savedGearsets.Count().ToString());
         ImGui.Text(placeholder);
 
         ImGui.Text(savedSetsDirectory.ToString());
@@ -161,9 +172,17 @@ public class MainWindow : Window, IDisposable
             using HttpResponseMessage response = await client.GetAsync("https://etro.gg/api/gearsets/" + etroID);
             string responseBody = await response.Content.ReadAsStringAsync();
 
-            File.WriteAllText(directory + "\\" + etroID + ".json", responseBody);
+            // if(response.IsSuccessStatusCode){
+                File.WriteAllText(directory + "\\" + etroID + ".json", responseBody);
+            // }
             etroID = "";
         });
+        // .ContinueWith((previousTask) =>
+        // {
+        //     this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
+        //     // savedGearsets.Add(etroID, currentGearset);
+        //     // bisComparison(currentGearset);
+        // });
 
         this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
 
@@ -187,7 +206,7 @@ public class MainWindow : Window, IDisposable
         Type type = gearsetTest.GetType();
         PropertyInfo[] properties = type.GetProperties();
         
-        if(ImGui.CollapsingHeader("Items", ImGuiTreeNodeFlags.DefaultOpen)){
+        // if(ImGui.CollapsingHeader("Items", ImGuiTreeNodeFlags.DefaultOpen)){
 
             float scale = ImGui.GetFontSize() / 17;
 
@@ -206,12 +225,20 @@ public class MainWindow : Window, IDisposable
                     var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
                     int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
                     if (icon != null){
+                        // ImGui.Text(rawItem.Name + " hasPiece:" + gearsetItem.hasPiece.ToString()); //test code
                         ImGui.Image(icon.ImGuiHandle, new Vector2(height, height));
                         ImGui.SameLine();
                         ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
                     }
 
-                    ImGui.Text(rawItem.Name);
+                    // ImGui.Text(rawItem.Name);
+                    if (gearsetItem.hasPiece){
+                        ImGui.TextColored(ImGuiColors.ParsedGreen, rawItem.Name);
+                    }
+
+                    else{
+                        ImGui.TextColored(ImGuiColors.DalamudWhite, rawItem.Name);
+                    }
 
                     if (rawItem.ExtendedItemLevel.Value is ExtendedItemLevel level){
                         ImGui.SameLine();
@@ -219,22 +246,52 @@ public class MainWindow : Window, IDisposable
                         
                         ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
                     }
+
+                    // ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - 32);
+
+                    // ImGui.Checkbox("", ref gearsetItem.hasPiece);
                 }
             }
-        }
+        // }
     }
 
     protected unsafe InventoryContainer* GetInventoryContainer(){
         return InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
     }
 
+// maybe use item level to narrow down search
     protected unsafe void bisComparison(Gearset givenGearset){
         InventoryContainer* inventory = GetInventoryContainer();
 
         for (uint i = 0; i < inventory->Size; i++){
             var item = inventory->Items[i];
-            
-        }
+            uint id = item.ItemId;
 
+            if (id == 0){
+                continue;
+            }
+
+            Type type = givenGearset.GetType();
+            PropertyInfo[] properties = type.GetProperties();
+            // ExtendedItem rawItem = Data.ItemSheet.GetRow(id);
+            foreach (PropertyInfo property in properties){
+                string name = property.Name;
+                object value = property.GetValue(givenGearset);
+
+                if (value == null){
+                    continue;
+                }
+
+                if (property.PropertyType == typeof(MeldedItem)){
+                    MeldedItem gearsetItem = (MeldedItem)value;
+
+                    if (gearsetItem.itemID == id){
+                        gearsetItem.hasPiece = true;
+                    }
+                }
+            
+            // ImGui.Text(rawItem.Name);
+            }
+        }
     }
 }
