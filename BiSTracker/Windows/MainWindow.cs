@@ -39,8 +39,9 @@ public class MainWindow : Window, IDisposable
     private string placeholder ="";
 
     private bool clickedDelete;
-    // private bool confirmDelete;
-
+    // private enum[] searchItemSpace = { (uint)InventoryType.ArmoryHead, InventoryType. };
+    // const itemSpace = InventoryType.EquippedItems;
+    List<InventoryType> itemSpace;
     private DirectoryInfo savedSetsDirectory;
     // protected PluginUI Ui { get;}
 
@@ -68,6 +69,8 @@ public class MainWindow : Window, IDisposable
         savedSetsDirectory = directory;
         savedGearsets = new Dictionary<string, Gearset>();
 
+        itemSpace = [InventoryType.EquippedItems, InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4, InventoryType.ArmoryOffHand, InventoryType.ArmoryMainHand, InventoryType.ArmoryHead, InventoryType.ArmoryBody, InventoryType.ArmoryHands, InventoryType.ArmoryLegs, InventoryType.ArmoryFeets, InventoryType.ArmoryEar, InventoryType.ArmoryNeck, InventoryType.ArmoryWrist, InventoryType.ArmoryRings, InventoryType.SaddleBag1, InventoryType.SaddleBag2];
+
         foreach (var set in plugin.Configuration.availableGearsets){
             savedGearsets.Add(set, etroImport(set));
         }
@@ -94,17 +97,47 @@ public class MainWindow : Window, IDisposable
         }
         
 
+        // ImGui.Combo(); //string label, ref int current_item, string[] items, int items_count (items.length)
+
         if (savedGearsets != null){
             if (savedGearsets.Count > 0){
-                if(ImGui.CollapsingHeader("Gearsets##GearsetsCollapsingHeader")){
+                var arrayOfGearsets = new String[savedGearsets.Count];
+                var currentIndexGearset = 0;
+                var dropdownIndexReference = 0;
+                foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
+                    arrayOfGearsets[currentIndexGearset] = kvp.Value.name;
+                    if (kvp.Value.Equals(currentGearset)){
+                        dropdownIndexReference = currentIndexGearset;
+                    }
+
+                    if (currentIndexGearset<arrayOfGearsets.Length-1){
+                        currentIndexGearset++;
+                    }
+                }               
+                
+                //should probably add a lastSavedSet config to load the last one for users on startup
+                if(ImGui.Combo("Gearsets##GearsetDropDown", ref dropdownIndexReference, arrayOfGearsets, arrayOfGearsets.Length)){
+                    // currentGearset = savedGearsets.TryGetValue(arrayOfGearsets[dropdownIndexReference]);
+                    var tempIndex = 0;
+                    
                     foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
-                        if(ImGui.Selectable(kvp.Value.name)){
-                            // clickedGearset = true;
-                            // ImGui.SameLine();
-                            currentGearset = kvp.Value;                            
+                        if (kvp.Value.name == arrayOfGearsets[dropdownIndexReference]){
+                            dropdownIndexReference = tempIndex;
+                            currentGearset = savedGearsets[kvp.Key];
+                        }
+                        if(tempIndex<arrayOfGearsets.Length-1){
+                            tempIndex++;
                         }
                     }
+                    // currentGearset = savedGearsets[arrayOfGearsets[dropdownIndexReference]];
                 }
+                // if(ImGui.CollapsingHeader("Gearsets##GearsetsCollapsingHeader")){
+                //     foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
+                //         if(ImGui.Selectable(kvp.Value.name)){
+                //             currentGearset = kvp.Value;                            
+                //         }
+                //     }
+                // }
             }
         }
 
@@ -121,7 +154,12 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
             ImGui.Spacing();
             ImGui.Spacing();
-            bisComparison(currentGearset);
+            foreach (var invTypeEnum in itemSpace){
+                bisComparison(currentGearset, invTypeEnum);
+            }
+
+
+            // bisComparison(currentGearset);
             DrawItems(currentGearset);
             DrawDeleteButton();
         }
@@ -197,8 +235,13 @@ public class MainWindow : Window, IDisposable
                 Gearset temp = etroGearToGearSet(etroJsonToObject(etroID, directory));
                 // this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
                 savedGearsets.Add(etroID, temp);
-                bisComparison(temp);
+                foreach (var invTypeEnum in itemSpace){
+                    bisComparison(temp, invTypeEnum);
+                }
+                
+                // bisComparison(temp);
                 this.currentGearset = temp;
+                etroImportString = "";
 
                 Plugin.Configuration.availableGearsets.Add(etroID);
                 Plugin.Configuration.Save();
@@ -268,6 +311,11 @@ public class MainWindow : Window, IDisposable
                         ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
                     }
 
+                    
+
+
+                    //test code for checkbox
+
                     // ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - 32);
 
                     // ImGui.Checkbox("", ref gearsetItem.hasPiece);
@@ -283,20 +331,23 @@ public class MainWindow : Window, IDisposable
         
         if (ImGui.Button("Delete Gearset?")){
             clickedDelete = true;
-            // DrawDeletionConfirmationWindow(ref clickedDelete);
         }
         ImGui.PopStyleColor();
 
         if(clickedDelete){
             DrawDeletionConfirmationWindow(ref clickedDelete);
         }
-
-        // ImGui.PopStyleColor();
     }
 
     protected unsafe InventoryContainer* GetInventoryContainer(){
         return InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
     }
+
+    protected unsafe InventoryContainer* GetInventoryContainer(InventoryType invTypeEnum){
+        return InventoryManager.Instance()->GetInventoryContainer(invTypeEnum);
+    }
+
+
 
     protected bool DrawDeletionConfirmationWindow(ref bool isVisible)
     {
@@ -329,13 +380,20 @@ public class MainWindow : Window, IDisposable
             File.Delete(savedSetsDirectory + "\\" + currentGearset.etroID + ".json");
             Plugin.Configuration.availableGearsets.Remove(currentGearset.etroID);
             Plugin.Configuration.Save();
-            currentGearset = null;
+            if (savedGearsets.Count != 0){
+                currentGearset = savedGearsets.First().Value;
+            }
+
+            else{
+                currentGearset = null;
+            }
         }
 
         ImGui.End();
 
         return ret;
     }
+
 
 // maybe use item level to narrow down search
     protected unsafe void bisComparison(Gearset givenGearset){
@@ -365,10 +423,47 @@ public class MainWindow : Window, IDisposable
 
                     if (gearsetItem.itemID == id){
                         gearsetItem.hasPiece = true;
+                        break;
+                        //add a break here since it no longer needs to compare current gear piece to the rest of inv?
                     }
                 }
             
             // ImGui.Text(rawItem.Name);
+            }
+        }
+    }
+
+    protected unsafe void bisComparison(Gearset givenGearset, InventoryType invTypeEnum){
+        InventoryContainer* inventory = GetInventoryContainer(invTypeEnum);
+
+        for (uint i = 0; i < inventory->Size; i++){
+            var item = inventory->Items[i];
+            uint id = item.ItemId;
+
+            if (id == 0){
+                continue;
+            }
+
+            Type type = givenGearset.GetType();
+            PropertyInfo[] properties = type.GetProperties();
+            // ExtendedItem rawItem = Data.ItemSheet.GetRow(id);
+            foreach (PropertyInfo property in properties){
+                string name = property.Name;
+                object value = property.GetValue(givenGearset);
+
+                if (value == null){
+                    continue;
+                }
+
+                if (property.PropertyType == typeof(MeldedItem)){
+                    MeldedItem gearsetItem = (MeldedItem)value;
+
+                    if (gearsetItem.itemID == id){
+                        gearsetItem.hasPiece = true;
+                        break;
+
+                    }
+                }
             }
         }
     }
