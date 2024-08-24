@@ -533,8 +533,6 @@ public class MainWindow : Window, IDisposable
                 
                 MeldedItem gearsetItem = (MeldedItem)value;
                 ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
-                rawItem.
-
 
                 GearCost costOfItem = COST[name];
 
