@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Common.Lua;
+using Dalamud.Game.Inventory;
 
 namespace BiSTracker.Windows;
 
@@ -47,6 +48,47 @@ public class MainWindow : Window, IDisposable
 
     //increment to 13 for food later
     // private uint[] gearID = {43107, 43076, 43154, 43155, 43079, 43157, 0, 43162, 43090, 43172, 43100, 43177};
+    private enum raidDropIDs : int{
+        Book1 = 43549,
+        Book2 = 43550,
+        Book3 = 43551,
+        Book4 = 43552,
+        Glaze = 43554,
+        Twine = 43555,
+    };
+
+    //skip raidOffHand
+    public enum bookCost : int{
+        BOOK_WEAP = 8,
+        BOOK_HEAD_HANDS_FEET = 4,
+        BOOK_CHEST_LEGS = 6,
+        BOOK_ACCESSORY = 3,
+        TWINE_SOLVENT = 4,
+        GLAZE = 3
+    };
+
+    public enum tomeCost : int{
+        TOME_WEAP = 500,
+        TOME_HEAD_HANDS_FEET = 495,
+        TOME_CHEST_LEGS = 825,
+        TOME_ACCESSORY = 375
+    }
+    //tomeCost tomeCost, bookCost bookCost, int bookType, bookCost bookUpgradeCost, int bookUpgradeType
+    private Dictionary<string, GearCost> COST = new Dictionary<string, GearCost>{
+        ["weapon"] = new GearCost(tomeCost.TOME_WEAP, bookCost.BOOK_WEAP, 4, bookCost.TWINE_SOLVENT, 3),
+        ["head"] = new GearCost(tomeCost.TOME_HEAD_HANDS_FEET, bookCost.BOOK_HEAD_HANDS_FEET, 2, bookCost.TWINE_SOLVENT, 3),
+        ["body"] = new GearCost(tomeCost.TOME_CHEST_LEGS, bookCost.BOOK_CHEST_LEGS, 3, bookCost.TWINE_SOLVENT, 3),
+        ["hands"] = new GearCost(tomeCost.TOME_HEAD_HANDS_FEET, bookCost.BOOK_HEAD_HANDS_FEET, 2, bookCost.TWINE_SOLVENT, 3),
+        ["legs"] = new GearCost(tomeCost.TOME_CHEST_LEGS, bookCost.BOOK_CHEST_LEGS, 3, bookCost.TWINE_SOLVENT, 3),
+        ["feet"] = new GearCost(tomeCost.TOME_HEAD_HANDS_FEET, bookCost.BOOK_HEAD_HANDS_FEET, 2, bookCost.TWINE_SOLVENT, 3),
+        ["ears"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["neck"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["wrists"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["fingerL"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["fingerR"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2)
+    };
+    private int[] remainingBooks = [0, 0, 0, 0];
+    private int[] remainingAugments = [0, 0];
 
     private Dictionary<string, Gearset>? savedGearsets;
     public Gearset? currentGearset;
@@ -75,9 +117,14 @@ public class MainWindow : Window, IDisposable
             savedGearsets.Add(set, etroImport(set));
         }
 
-        currentGearset = null;
+        if (savedGearsets.Count > 0){
+            currentGearset = savedGearsets.First().Value; 
+        }
+
+        else{
+            currentGearset = null;
+        }
         clickedDelete = false;
-        // confirmDelete = false;
     }
 
     public void Dispose() {}
@@ -117,7 +164,6 @@ public class MainWindow : Window, IDisposable
                 
                 //should probably add a lastSavedSet config to load the last one for users on startup
                 if(ImGui.Combo("Gearsets##GearsetDropDown", ref dropdownIndexReference, arrayOfGearsets, arrayOfGearsets.Length)){
-                    // currentGearset = savedGearsets.TryGetValue(arrayOfGearsets[dropdownIndexReference]);
                     var tempIndex = 0;
                     
                     foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
@@ -129,8 +175,8 @@ public class MainWindow : Window, IDisposable
                             tempIndex++;
                         }
                     }
-                    // currentGearset = savedGearsets[arrayOfGearsets[dropdownIndexReference]];
                 }
+
                 // if(ImGui.CollapsingHeader("Gearsets##GearsetsCollapsingHeader")){
                 //     foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
                 //         if(ImGui.Selectable(kvp.Value.name)){
@@ -140,7 +186,7 @@ public class MainWindow : Window, IDisposable
                 // }
             }
         }
-
+        
 
         // if (currentGearset != null && ImGui.CollapsingHeader("Items" + $"({currentGearset.name})##GearsetItemsCollapsingHeader", ImGuiTreeNodeFlags.DefaultOpen)){
         //     bisComparison(currentGearset);
@@ -148,19 +194,18 @@ public class MainWindow : Window, IDisposable
         // }
         if (currentGearset != null){
             ImGui.Spacing();
+            ImGui.Separator();
             ImGui.Spacing();
-            ImGui.Spacing();
-            ImGui.Spacing();
-            ImGui.Spacing();
-            ImGui.Spacing();
-            ImGui.Spacing();
+            var currentGearsetCost = getInitialBookCost(currentGearset);
             foreach (var invTypeEnum in itemSpace){
                 bisComparison(currentGearset, invTypeEnum);
             }
 
-
             // bisComparison(currentGearset);
             DrawItems(currentGearset);
+            foreach (var value in currentGearsetCost){
+                ImGui.Text(value.ToString());
+            }
             DrawDeleteButton();
         }
 
@@ -286,6 +331,7 @@ public class MainWindow : Window, IDisposable
                     MeldedItem gearsetItem = (MeldedItem)value;
 
                     ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); //gearID[i] originally in here
+                    
                     var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
                     int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
                     if (icon != null){
@@ -466,5 +512,44 @@ public class MainWindow : Window, IDisposable
                 }
             }
         }
+    }
+
+    //different ways of calculating book costs
+    //buying everything with books, including gear pieces + glaze/twine (gear sheet default)
+    //buying only glaze/twine with books
+    protected int[] getInitialBookCost(Gearset givenGearset){
+        int[] returnCost = new int[5];
+
+        Type type = givenGearset.GetType();
+        PropertyInfo[] properties = type.GetProperties();
+        foreach (PropertyInfo property in properties){
+            string name = property.Name;
+            object value = property.GetValue(givenGearset);
+            if (value == null || name == "offHand"){
+                continue;
+            }
+
+            if (property.PropertyType == typeof(MeldedItem)){
+                
+                MeldedItem gearsetItem = (MeldedItem)value;
+                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                rawItem.
+
+
+                GearCost costOfItem = COST[name];
+
+
+                if (!rawItem.Name.RawString.Contains("Augmented")){
+                    returnCost[costOfItem.bookType-1] += (int)costOfItem.bookCost;
+                }
+                
+                else if (rawItem.Name.RawString.Contains("Augmented")){
+                    returnCost[costOfItem.bookUpgradeType-1] += (int)costOfItem.bookUpgradeCost;
+                    returnCost[4] += (int)costOfItem.tomeCost;
+                }
+            }
+        }
+
+        return returnCost;
     }
 }

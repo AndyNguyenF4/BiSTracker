@@ -23,7 +23,7 @@ public Gearset(EtroGearsetParse inputGear){
         this.wrists = new MeldedItem(inputGear.wrists, new MeldedMateria[5]);
         this.fingerL = new MeldedItem(inputGear.fingerL, new MeldedMateria[5]);
         this.fingerR = new MeldedItem(inputGear.fingerR, new MeldedMateria[5]);
-        this.weapon = new MeldedItem(inputGear.weapon, new MeldedMateria[5]);
+        // this.weapon = new MeldedItem(inputGear.weapon, new MeldedMateria[5]);
     }
     
     public string etroID{get; set;}
