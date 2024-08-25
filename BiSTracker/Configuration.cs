@@ -13,6 +13,7 @@ public class Configuration : IPluginConfiguration
 
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+    public bool buyTwineGlazeOnly { get; set; } = false;
 
     // public string[]? availableGearsets {get; set;} = null;
 

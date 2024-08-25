@@ -22,6 +22,9 @@ using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using Dalamud.Game.Inventory;
+using Dalamud.Interface.Style;
+using Dalamud.Plugin;
+
 
 namespace BiSTracker.Windows;
 
@@ -196,16 +199,56 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
-            var currentGearsetCost = getInitialBookCost(currentGearset);
+            
+            // PlayerGearCost playerGearsetCost = new PlayerGearCost(
+            //     getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly, true),
+            // );
+
+            var currentGearsetCost = getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly, true);
+            int[] adjustedGearsetCost = {0, 0, 0, 0, 0};
+            //var adjustedGearsetCost = getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly, false);
+            Vector4[] imGuiColors = [ImGuiColors.DalamudRed, ImGuiColors.DalamudOrange, ImGuiColors.ParsedGreen, ImGuiColors.DalamudGrey, ImGuiColors.ParsedGold];
+            
             foreach (var invTypeEnum in itemSpace){
                 bisComparison(currentGearset, invTypeEnum);
             }
 
             // bisComparison(currentGearset);
             DrawItems(currentGearset);
-            foreach (var value in currentGearsetCost){
-                ImGui.Text(value.ToString());
+            // foreach (var value in currentGearsetCost){
+            //     ImGui.Text(value.ToString());
+            // }
+            
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+            ImGui.Text("Books:");
+            ImGui.SameLine(0, 15);
+            for (var i = 0; i < currentGearsetCost.Length; i++){
+                if (i < currentGearsetCost.Length-1){
+                    ImGui.TextColored(imGuiColors[i], adjustedGearsetCost[i] + "/" + currentGearsetCost[i]);
+                    ImGui.SameLine(0, 15);
+                }
+
+                else{
+                    ImGui.NewLine();
+                    ImGui.Text("Tomes: ");
+                    ImGui.SameLine(0, 5);
+                    ImGui.TextColored(imGuiColors[i], adjustedGearsetCost[i] + "/" + currentGearsetCost[i]);
+                }
             }
+
+            // ImGui.TextColored(ImGuiColors.DalamudRed, currentGearsetCost[0].ToString());
+            // ImGui.SameLine(0, 15);
+            // ImGui.TextColored(ImGuiColors.DalamudOrange, currentGearsetCost[1].ToString());
+            // ImGui.SameLine(0, 15);
+            // ImGui.TextColored(ImGuiColors.ParsedGreen, currentGearsetCost[2].ToString());
+            // ImGui.SameLine(0, 15);
+            // ImGui.TextColored(ImGuiColors.DalamudGrey, currentGearsetCost[3].ToString());
+            // ImGui.Text("Tomes: ");
+            // ImGui.SameLine(0, 5);
+            // ImGui.TextColored(ImGuiColors.ParsedGold, currentGearsetCost[4].ToString());
+            // ImGui.Text(getTomeCount().ToString());
             DrawDeleteButton();
         }
 
@@ -442,9 +485,10 @@ public class MainWindow : Window, IDisposable
 
 
 // maybe use item level to narrow down search
+    //find out how to make adjusted costs work
     protected unsafe void bisComparison(Gearset givenGearset){
         InventoryContainer* inventory = GetInventoryContainer();
-
+        
         for (uint i = 0; i < inventory->Size; i++){
             var item = inventory->Items[i];
             uint id = item.ItemId;
@@ -473,7 +517,6 @@ public class MainWindow : Window, IDisposable
                         //add a break here since it no longer needs to compare current gear piece to the rest of inv?
                     }
                 }
-            
             // ImGui.Text(rawItem.Name);
             }
         }
@@ -514,10 +557,45 @@ public class MainWindow : Window, IDisposable
         }
     }
 
+    protected int[] getUpdatedCost(Gearset givenGearset, bool buyTwineGlazeOnly){
+        int[] updatedCost = new int[5];
+        
+        Type type = givenGearset.GetType();
+        PropertyInfo[] properties = type.GetProperties();
+        foreach (PropertyInfo property in properties){
+            string name = property.Name;
+            object value = property.GetValue(givenGearset);
+            
+            if (value == null || name == "offHand"){
+                continue;
+            }
+
+            if (property.PropertyType == typeof(MeldedItem)){
+                MeldedItem gearsetItem = (MeldedItem)value;
+                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                GearCost costOfItem = COST[name];
+
+                if (gearsetItem.hasPiece){
+                    if ((name == "weapon" || !buyTwineGlazeOnly) && !rawItem.Name.RawString.Contains("Augmented")){
+                        updatedCost[costOfItem.bookType-1] += (int)costOfItem.bookCost;
+                    }
+                
+                    else if (rawItem.Name.RawString.Contains("Augmented")){
+                        updatedCost[costOfItem.bookUpgradeType-1] += (int)costOfItem.bookUpgradeCost;
+                        updatedCost[4] += (int)costOfItem.tomeCost;
+                    }
+                }
+            }
+
+        }
+
+        return updatedCost;
+    }
+
     //different ways of calculating book costs
     //buying everything with books, including gear pieces + glaze/twine (gear sheet default)
     //buying only glaze/twine with books
-    protected int[] getInitialBookCost(Gearset givenGearset){
+    protected int[] getInitialCost(Gearset givenGearset, bool buyTwineGlazeOnly, bool checkAllPieces){
         int[] returnCost = new int[5];
 
         Type type = givenGearset.GetType();
@@ -536,18 +614,34 @@ public class MainWindow : Window, IDisposable
 
                 GearCost costOfItem = COST[name];
 
+                if (!gearsetItem.hasPiece){
+                    costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
+                }
 
-                if (!rawItem.Name.RawString.Contains("Augmented")){
-                    returnCost[costOfItem.bookType-1] += (int)costOfItem.bookCost;
-                }
-                
-                else if (rawItem.Name.RawString.Contains("Augmented")){
-                    returnCost[costOfItem.bookUpgradeType-1] += (int)costOfItem.bookUpgradeCost;
-                    returnCost[4] += (int)costOfItem.tomeCost;
-                }
+
+
+
+                // if (gearsetItem.hasPiece){
+                //     costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
+                // }
+
+                // else if(checkAllPieces){
+                //     costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
+                // }
             }
         }
 
         return returnCost;
+    }
+
+    protected void costHelperFunction(string name, ExtendedItem rawItem, GearCost costOfItem, bool buyTwineGlazeOnly, int[] returnCost){
+        if ((name == "weapon" || !buyTwineGlazeOnly) && !rawItem.Name.RawString.Contains("Augmented")){
+            returnCost[costOfItem.bookType-1] += (int)costOfItem.bookCost;
+        }
+        
+        else if (rawItem.Name.RawString.Contains("Augmented")){
+            returnCost[costOfItem.bookUpgradeType-1] += (int)costOfItem.bookUpgradeCost;
+            returnCost[4] += (int)costOfItem.tomeCost;
+        }
     }
 }

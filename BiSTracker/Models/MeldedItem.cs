@@ -19,9 +19,6 @@ public class MeldedItem{
 			return null;
 		return Data.ItemSheet.GetRow(itemID);
 	}
-
-
-
 };
 // } {
 

@@ -8,6 +8,7 @@ Highlight green/red over gear or use a checkmark to indicate having pieces of Bi
 Display total and/or remaining tomes and weeks of capping - WIP
 Display total and/or remaining books for twine/glazes - WIP
 Support import from XIVGear.app
+Reload gearsets on difference chars?
 
 Current Tasks
 Parse JSON and input gear into gearset/melded item/melded materia structs - COMPLETED
@@ -17,6 +18,8 @@ Config to load in sets on initial launch - COMPLETED?
 Convert Collapsible Header for gearset selection to dropdown? COMPLETED
 Fix formatting 
 Add in a disclaimer that retainers aren't read and relic support isn't added.
+Check inv to display books for left of / and subtract from right of / if twine/glazes are present
+Move delete gearset button next to gear dropdown
 
 Check biscomparison for a break and try to assign an enum list/array to iterate over for GetInventoryContainer/biscomparison arguments
 

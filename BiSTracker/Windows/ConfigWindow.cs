@@ -14,11 +14,16 @@ public class ConfigWindow : Window, IDisposable
     // and the window ID will always be "###XYZ counter window" for ImGui
     public ConfigWindow(Plugin plugin) : base("BiS Tracker Config Window###BiSTrackerConfig")
     {
-        Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
-                ImGuiWindowFlags.NoScrollWithMouse;
+        Flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
+                ImGuiWindowFlags.NoScrollWithMouse; //ImGuiWindowFlags.NoResize | 
 
-        Size = new Vector2(232, 90);
-        SizeCondition = ImGuiCond.Always;
+        // Size = new Vector2(232, 90);
+        SizeConstraints = new WindowSizeConstraints
+        {
+            MinimumSize = new Vector2(200, 100),
+            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
+        };
+        // SizeCondition = ImGuiCond.Always;
 
         Configuration = plugin.Configuration;
     }
@@ -55,5 +60,13 @@ public class ConfigWindow : Window, IDisposable
             Configuration.IsConfigWindowMovable = movable;
             Configuration.Save();
         }
+
+        var buyTwineGlazeOnly = Configuration.buyTwineGlazeOnly;
+        if (ImGui.Checkbox("Use Books for Twines and Glazes only", ref buyTwineGlazeOnly))
+        {
+            Configuration.buyTwineGlazeOnly = buyTwineGlazeOnly;
+            Configuration.Save();
+        }
+
     }
 }
