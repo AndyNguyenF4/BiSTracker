@@ -7,11 +7,14 @@ public class MeldedItem{
 		this.itemID = itemID;
 		this.meldedMateria = meldedMateria;
 		this.hasPiece = false;
+		this.hasUnaugmented = false;
   	}
 	
 	public uint itemID;
 	public MeldedMateria[] meldedMateria;
 	public bool hasPiece;
+
+	public bool hasUnaugmented;
 	// bool HighQuality,
 
 	public ExtendedItem? Row() {
