@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using BiSTracker.Models;
 using BiSTracker.Sheets;
 using Lumina.Excel;
@@ -13,9 +14,9 @@ internal static partial class Data{
     internal static ExcelSheet<ExtendedItemLevel>? LevelSheet { get; set; }
     internal static ExcelSheet<Materia>? MateriaSheet { get; set; }
     internal static ExcelSheet<ItemFood>? FoodSheet { get; set; }
-    // internal static ExcelSheet<TomestonesItem>? TomestonesSheet {get;set;}
+    internal static ExcelSheet<TomestonesItem>? TomestonesSheet {get;set;}
 
-//[MemberNotNullWhen(true, nameof(ItemSheet), nameof(FoodSheet), nameof(LevelSheet), nameof(MateriaSheet))]
+[MemberNotNullWhen(true, nameof(ItemSheet), nameof(FoodSheet), nameof(LevelSheet), nameof(MateriaSheet))]
     internal static bool CheckSheets(ExcelModule? excel = null){
         if (ItemSheet == null || LevelSheet == null || MateriaSheet == null || FoodSheet == null){
             if (excel is not null){
@@ -35,6 +36,6 @@ internal static partial class Data{
         FoodSheet = excel.GetSheet<ItemFood>();
         LevelSheet = excel.GetSheet<ExtendedItemLevel>();
         MateriaSheet = excel.GetSheet<Materia>();
-        // TomestonesSheet = excel.GetSheet<TomestonesItem>();
+        TomestonesSheet = excel.GetSheet<TomestonesItem>();
     }
 }

@@ -5,23 +5,22 @@ Display Etro Gearset in Window - COMPLETED
 EXTRA Functionality
 Highlight green/red over gear or use a checkmark to indicate having pieces of BiS - PARTIAL
 ^ requires grabbing and reading player's current gear/inventory (FINISH READING ALL INVENTORY SLOTS NOT JUST EQUIPPED ITEMS) COMPLETED
-Display total and/or remaining tomes and weeks of capping - WIP
-Display total and/or remaining books for twine/glazes - WIP
+Display total and/or remaining tomes and/or weeks of capping - COMPLETED
+Display total and/or remaining books for twine/glazes - COMPLETED
 Support import from XIVGear.app
-Reload gearsets on difference chars?
+Reload gearsets on difference chars? -> reset hasPiece/isUnaugmented
 
 Current Tasks
 Parse JSON and input gear into gearset/melded item/melded materia structs - COMPLETED
-Display said gearset with melds in the main window - TODO
 Make a menu to access saved gearsets/JSONs and a way to delete them - COMPLETED
 Config to load in sets on initial launch - COMPLETED?
-Convert Collapsible Header for gearset selection to dropdown? COMPLETED
-Fix formatting 
+Convert Collapsible Header for gearset selection to dropdown? - COMPLETED
 Add in a disclaimer that retainers aren't read and relic support isn't added.
-Check inv to display books for left of / and subtract from right of / if twine/glazes are present
-Move delete gearset button next to gear dropdown
-
-Check biscomparison for a break and try to assign an enum list/array to iterate over for GetInventoryContainer/biscomparison arguments
+Check inv to display books for left of / and subtract from right of / if twine/glazes are present - COMPLETED
+Move delete gearset button next to gear dropdown - COMPLETED
+If changing chars, reset hasPiece/isUnaugmented to false - TODO
+Display said gearset with melds in the main window - TODO
+Fix formatting 
 
 https://etro.gg/gearset/01f9c125-ff1e-4637-b2b4-8d3e01c48d8f 2.42
 https://etro.gg/gearset/9132ff2a-cdf8-499e-9e33-35d85aa61599 2.36

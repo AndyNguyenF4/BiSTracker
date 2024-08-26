@@ -22,6 +22,8 @@ public class Configuration : IPluginConfiguration
 
     public HashSet<string>? availableGearsets {get; set;} = new HashSet<string>();
 
+    // public string lastSavedSet {get; set;} = "";
+
 
     //instead make this be a string 
     // public Gearset? lastGearset {get; set;} = null;

@@ -1,53 +1,36 @@
 ﻿using System;
 using System.Reflection;
 using System.Numerics;
-using Dalamud.Interface.Internal;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin.Services;
 using ImGuiNET;
 using BiSTracker.Models;
 using BiSTracker.Sheets;
 using Lumina.Excel.GeneratedSheets;
 using Dalamud.Interface.Textures;
-using Dalamud;
 using Dalamud.Interface.Colors;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game;
-
-
+using Dalamud.Plugin.Services;
+using Dalamud.IoC;
 
 namespace BiSTracker.Windows;
-
 public class MainWindow : Window, IDisposable
 {
-    private string GoatImagePath;
+    private string GoatImagePath; //delete later
     private string etroImportString = "";
-
     private string etroID = "";
     private string[] etroImportStringSplit = new string[2];
-
-    // private bool buttonPressed;
-
     private static readonly HttpClient client = new HttpClient();
-
-    private string placeholder ="";
-
+    private string placeholder =""; //delete later
     private bool clickedDelete;
-    // private enum[] searchItemSpace = { (uint)InventoryType.ArmoryHead, InventoryType. };
-    // const itemSpace = InventoryType.EquippedItems;
-    List<InventoryType> itemSpace;
+    private List<InventoryType> itemSpace;
     private DirectoryInfo savedSetsDirectory;
-    // protected PluginUI Ui { get;}
-
-    //increment to 13 for food later
-    // private uint[] gearID = {43107, 43076, 43154, 43155, 43079, 43157, 0, 43162, 43090, 43172, 43100, 43177};
     private enum raidDropIDs : int{
         Book1 = 43549,
         Book2 = 43550,
@@ -100,7 +83,7 @@ public class MainWindow : Window, IDisposable
     private int[] remainingAugments = [0, 0];
 
     private Dictionary<string, Gearset>? savedGearsets;
-    public Gearset? currentGearset;
+    private Gearset? currentGearset;
     private Plugin Plugin;
 
     // We give this window a hidden ID using ##
@@ -128,6 +111,7 @@ public class MainWindow : Window, IDisposable
 
         if (savedGearsets.Count > 0){
             currentGearset = savedGearsets.First().Value; 
+            // currentGearset = savedGearsets[Plugin.Configuration.lastSavedSet];
         }
 
         else{
@@ -157,7 +141,7 @@ public class MainWindow : Window, IDisposable
 
         if (savedGearsets != null){
             if (savedGearsets.Count > 0){
-                var arrayOfGearsets = new String[savedGearsets.Count];
+                var arrayOfGearsets = new string[savedGearsets.Count];
                 var currentIndexGearset = 0;
                 var dropdownIndexReference = 0;
                 foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
@@ -172,27 +156,23 @@ public class MainWindow : Window, IDisposable
                 }               
                 
                 //should probably add a lastSavedSet config to load the last one for users on startup
-                if(ImGui.Combo("Gearsets##GearsetDropDown", ref dropdownIndexReference, arrayOfGearsets, arrayOfGearsets.Length)){
+                if(ImGui.Combo("##GearsetDropDown", ref dropdownIndexReference, arrayOfGearsets, arrayOfGearsets.Length)){
                     var tempIndex = 0;
                     
                     foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
                         if (kvp.Value.name == arrayOfGearsets[dropdownIndexReference]){
                             dropdownIndexReference = tempIndex;
                             currentGearset = savedGearsets[kvp.Key];
+                            // Plugin.Configuration.lastSavedSet = kvp.Key;
+                            // Plugin.Configuration.Save();
                         }
                         if(tempIndex<arrayOfGearsets.Length-1){
                             tempIndex++;
                         }
                     }
                 }
-
-                // if(ImGui.CollapsingHeader("Gearsets##GearsetsCollapsingHeader")){
-                //     foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
-                //         if(ImGui.Selectable(kvp.Value.name)){
-                //             currentGearset = kvp.Value;                            
-                //         }
-                //     }
-                // }
+                ImGui.SameLine();
+                DrawDeleteButton();
             }
         }
         
@@ -205,11 +185,6 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
-
-            // var currentGearsetCost = getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly, true);
-            // uint[] adjustedGearsetCost = {0, 0, 0, 0, 0};
-            // var adjustedGearsetCost = getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly, false);
-            // Vector4[] imGuiColors = [ImGuiColors.DalamudRed, ImGuiColors.DalamudOrange, ImGuiColors.ParsedGreen, ImGuiColors.DalamudGrey, ImGuiColors.ParsedGold];
             
             foreach (var invTypeEnum in itemSpace){
                 bisComparison(currentGearset, invTypeEnum);
@@ -222,7 +197,7 @@ public class MainWindow : Window, IDisposable
             // }
             PlayerGearCost playerGearsetCost = new PlayerGearCost(
                 new uint[5],
-                getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly, true),
+                getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly),
                 0,
                 0
             );
@@ -245,73 +220,17 @@ public class MainWindow : Window, IDisposable
                     ImGui.NewLine();
                     ImGui.Text("Tomes: ");
                     ImGui.SameLine(0, 5);
+                    var currentTome = getCurrentTomes();
                     // ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + playerGearsetCost.remainingBookCost[index]);
-                    ImGui.TextColored(playerGearsetCost.bookColors[index], (playerGearsetCost.remainingBookCost[index]-playerGearsetCost.bookCount[index]).ToString());
+                    if (playerGearsetCost.remainingBookCost[index]<playerGearsetCost.bookCount[index]){
+                        ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/0");
+                    }
+
+                    else{
+                    ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/" + (playerGearsetCost.remainingBookCost[index]-playerGearsetCost.bookCount[index]).ToString());
+                    }
                 }
             }
-
-
-            // Type type = playerGearsetCost.GetType();
-            // PropertyInfo[] properties = type.GetProperties(); 
-
-            // foreach (PropertyInfo property in properties){
-            //     var value = property.GetValue(playerGearsetCost);
-                
-            //     if (property.PropertyType == typeof(uint[])){
-            //        var bookData = (uint[])value;
-            //        for (var index = 0; index < bookData.Length; index++){
-            //         if (index < bookData.Length-1){
-            //             ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.remainingBookCost[index] + "/" + playerGearsetCost.bookCount[index]);
-            //             ImGui.SameLine(0, 15);
-            //         }
-
-            //         else{
-            //             ImGui.NewLine();
-            //             ImGui.Text("Tomes: ");
-            //             ImGui.SameLine(0, 5);
-            //             ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.currentTomes + "/" + playerGearsetCost.remainingTotalTomes);
-            //         }
-            //        }
-            //     }
-            //     // if (i < currentGearsetCost.Length-1){
-            //     //     ImGui.TextColored(imGuiColors[i], adjustedGearsetCost[i] + "/" + currentGearsetCost[i]);
-            //     //     ImGui.SameLine(0, 15);
-            //     // }
-
-            //     // else{
-            //     //     ImGui.NewLine();
-            //     //     ImGui.Text("Tomes: ");
-            //     //     ImGui.SameLine(0, 5);
-            //     //     ImGui.TextColored(imGuiColors[i], adjustedGearsetCost[i] + "/" + currentGearsetCost[i]);
-            //     // }
-            // }
-            
-            // for (var i = 0; i < currentGearsetCost.Length; i++){
-            //     if (i < currentGearsetCost.Length-1){
-            //         ImGui.TextColored(imGuiColors[i], adjustedGearsetCost[i] + "/" + currentGearsetCost[i]);
-            //         ImGui.SameLine(0, 15);
-            //     }
-
-            //     else{
-            //         ImGui.NewLine();
-            //         ImGui.Text("Tomes: ");
-            //         ImGui.SameLine(0, 5);
-            //         ImGui.TextColored(imGuiColors[i], adjustedGearsetCost[i] + "/" + currentGearsetCost[i]);
-            //     }
-            // }
-
-            // ImGui.TextColored(ImGuiColors.DalamudRed, currentGearsetCost[0].ToString());
-            // ImGui.SameLine(0, 15);
-            // ImGui.TextColored(ImGuiColors.DalamudOrange, currentGearsetCost[1].ToString());
-            // ImGui.SameLine(0, 15);
-            // ImGui.TextColored(ImGuiColors.ParsedGreen, currentGearsetCost[2].ToString());
-            // ImGui.SameLine(0, 15);
-            // ImGui.TextColored(ImGuiColors.DalamudGrey, currentGearsetCost[3].ToString());
-            // ImGui.Text("Tomes: ");
-            // ImGui.SameLine(0, 5);
-            // ImGui.TextColored(ImGuiColors.ParsedGold, currentGearsetCost[4].ToString());
-            // ImGui.Text(getTomeCount().ToString());
-            DrawDeleteButton();
         }
 
         ImGui.Text(placeholder);
@@ -330,7 +249,6 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
      
-
         ImGui.Text("Have a goat:");
         var goatImage = Plugin.TextureProvider.GetFromFile(GoatImagePath).GetWrapOrDefault();
         if (goatImage != null)
@@ -350,6 +268,12 @@ public class MainWindow : Window, IDisposable
 
     }
 
+    protected unsafe uint getCurrentTomes(){
+        uint id = Data.TomestonesSheet.Where(tomestone => tomestone.Tomestones.Row is 3).First().Item.Row;
+        var returnVal = InventoryManager.Instance()->GetTomestoneCount(id);
+        return returnVal;
+    }
+
 	protected ISharedImmediateTexture? GetIcon(Item? item, bool hq = false) {
 		if (item is not null)
 			return GetIcon(item.Icon, hq);
@@ -359,7 +283,6 @@ public class MainWindow : Window, IDisposable
 	protected ISharedImmediateTexture GetIcon(uint id, bool hq = false) {
 		return Plugin.TextureProvider.GetFromGameIcon(new GameIconLookup(id, hq));
 	}
-
 
     protected Gearset etroImport(string etroID){
         return etroGearToGearSet(etroJsonToObject(etroID, savedSetsDirectory));
@@ -390,7 +313,7 @@ public class MainWindow : Window, IDisposable
                 }
                 
                 // bisComparison(temp);
-                this.currentGearset = temp;
+                currentGearset = temp;
                 etroImportString = "";
 
                 Plugin.Configuration.availableGearsets.Add(etroID);
@@ -412,86 +335,67 @@ public class MainWindow : Window, IDisposable
     protected static Gearset etroGearToGearSet(EtroGearsetParse inputGear){
         return new Gearset(inputGear);
     }
-
-    //button should update a variable for a currentSet and drawItems should utilize
-    //this to render the currentSet instead of rendering all sets
-    //waymark library has imgui.selectable, good reference
     public void DrawItems(Gearset gearsetTest){
         Type type = gearsetTest.GetType();
         PropertyInfo[] properties = type.GetProperties();
-        
-        // if(ImGui.CollapsingHeader("Items", ImGuiTreeNodeFlags.DefaultOpen)){
 
-            float scale = ImGui.GetFontSize() / 17;
+        float scale = ImGui.GetFontSize() / 17;
 
-            foreach (PropertyInfo property in properties){
-                // string name = property.Name;
-                object value = property.GetValue(gearsetTest);
+        foreach (PropertyInfo property in properties){
+            // string name = property.Name;
+            object value = property.GetValue(gearsetTest);
 
-                if (value == null){
-                    continue;
-                }
-
-                if (property.PropertyType == typeof(MeldedItem)){
-                    MeldedItem gearsetItem = (MeldedItem)value;
-
-                    ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); //gearID[i] originally in here
-                    
-                    var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
-                    int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
-                    if (icon != null){
-                        // ImGui.Text(rawItem.Name + " hasPiece:" + gearsetItem.hasPiece.ToString()); //test code
-                        ImGui.Image(icon.ImGuiHandle, new Vector2(height, height));
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
-                    }
-
-                    // ImGui.Text(rawItem.Name);
-                    if (gearsetItem.hasPiece){
-                        ImGui.TextColored(ImGuiColors.ParsedGreen, rawItem.Name);
-                    }
-
-                    else if (gearsetItem.hasUnaugmented){
-                        ImGui.TextColored(ImGuiColors.DalamudYellow, rawItem.Name);
-                    }
-
-                    else{
-                        ImGui.TextColored(ImGuiColors.DalamudWhite, rawItem.Name);
-                    }
-
-                    if (rawItem.ExtendedItemLevel.Value is ExtendedItemLevel level){
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
-                        
-                        ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
-
-                        //test code for unaug values
-                        // if (gearsetItem.hasUnaugmented){
-                            // ImGui.SameLine();
-                            // ImGui.Text(gearsetItem.hasUnaugmented.ToString());
-                            // ImGui.Text(rawItem.Name.RawString.Split(" ")[1]);
-                        // }
-                    }
-
-                    
-
-
-                    //test code for checkbox
-
-                    // ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - 32);
-
-                    // ImGui.Checkbox("", ref gearsetItem.hasPiece);
-                }
+            if (value == null){
+                continue;
             }
-        // }
+
+            if (property.PropertyType == typeof(MeldedItem)){
+                MeldedItem gearsetItem = (MeldedItem)value;
+
+                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); //gearID[i] originally in here
+                
+                var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
+                int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
+                if (icon != null){
+                    ImGui.Image(icon.ImGuiHandle, new Vector2(height, height));
+                    ImGui.SameLine();
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
+                }
+
+                // ImGui.Text(rawItem.Name);
+                if (gearsetItem.hasPiece){
+                    ImGui.TextColored(ImGuiColors.ParsedGreen, rawItem.Name);
+                }
+
+                else if (gearsetItem.hasUnaugmented){
+                    ImGui.TextColored(ImGuiColors.DalamudYellow, rawItem.Name);
+                }
+
+                else{
+                    ImGui.TextColored(ImGuiColors.DalamudWhite, rawItem.Name);
+                }
+
+                if (rawItem.ExtendedItemLevel.Value is ExtendedItemLevel level){
+                    ImGui.SameLine();
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
+                    
+                    ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
+                }
+                //test code for checkbox
+
+                // ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - 32);
+
+                // ImGui.Checkbox("", ref gearsetItem.hasPiece);
+            }
+        }
     }
     
     public void DrawDeleteButton(){
         
-        var color = System.Drawing.Color.FromArgb(217, 39, 39, 204);
+        // var color = System.Drawing.Color.FromArgb(217, 39, 39, 204);
         ImGui.PushStyleColor(ImGuiCol.Text, 0xFC5A5AFF); // EE6244FF
         
-        if (ImGui.Button("Delete Gearset?")){
+        if (ImGui.Button("Delete")){
             clickedDelete = true;
         }
         ImGui.PopStyleColor();
@@ -501,15 +405,9 @@ public class MainWindow : Window, IDisposable
         }
     }
 
-    protected unsafe InventoryContainer* GetInventoryContainer(){
-        return InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
-    }
-
     protected unsafe InventoryContainer* GetInventoryContainer(InventoryType invTypeEnum){
         return InventoryManager.Instance()->GetInventoryContainer(invTypeEnum);
     }
-
-
 
     protected bool DrawDeletionConfirmationWindow(ref bool isVisible)
     {
@@ -555,58 +453,6 @@ public class MainWindow : Window, IDisposable
 
         return ret;
     }
-
-
-// maybe use item level to narrow down search
-    //find out how to make adjusted costs work
-    protected unsafe void bisComparison(Gearset givenGearset){
-        InventoryContainer* inventory = GetInventoryContainer();
-        
-        for (uint i = 0; i < inventory->Size; i++){
-            var item = inventory->Items[i];
-            uint id = item.ItemId;
-
-            if (id == 0){
-                continue;
-            }
-
-            Type type = givenGearset.GetType();
-            PropertyInfo[] properties = type.GetProperties();
-            // ExtendedItem rawItem = Data.ItemSheet.GetRow(id);
-            foreach (PropertyInfo property in properties){
-                string name = property.Name;
-                object value = property.GetValue(givenGearset);
-
-                if (value == null){
-                    continue;
-                }
-
-                if (property.PropertyType == typeof(MeldedItem)){
-                    MeldedItem gearsetItem = (MeldedItem)value;
-                    ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
-                    
-                    if (gearsetItem.itemID == id){
-                        gearsetItem.hasPiece = true;
-                        break;
-                        //add a break here since it no longer needs to compare current gear piece to the rest of inv?
-                    }
-                    
-                    //new code to test if unaugmented pieces exist
-                    if (rawItem.Name.RawString.Contains("Augmented")){
-                        ExtendedItem currentInvItem = Data.ItemSheet.GetRow(id);
-                        String[] gearsetItemString = rawItem.Name.RawString.Split(" ");
-                        String[] currentItemString = currentInvItem.Name.RawString.Split(" ");
-                        if (gearsetItemString[1] == currentItemString[0]){
-                            gearsetItem.hasUnaugmented = true;
-                            break;
-                        }
-                    }
-                }
-            // ImGui.Text(rawItem.Name);
-            }
-        }
-    }
-
     protected unsafe void bisComparison(Gearset givenGearset, InventoryType invTypeEnum){
         InventoryContainer* inventory = GetInventoryContainer(invTypeEnum);
 
@@ -632,6 +478,7 @@ public class MainWindow : Window, IDisposable
                 if (property.PropertyType == typeof(MeldedItem)){
                     MeldedItem gearsetItem = (MeldedItem)value;
                     ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                    
                     if (gearsetItem.itemID == id){
                         gearsetItem.hasPiece = true;
                         break;
@@ -642,6 +489,7 @@ public class MainWindow : Window, IDisposable
                         ExtendedItem currentInvItem = Data.ItemSheet.GetRow(id);
                         var gearsetItemString = rawItem.Name.RawString.Split(" ").ToList();
                         var currentItemString = currentInvItem.Name.RawString.Split(" ").ToList();
+                        
                         if (gearsetItemString[1] == currentItemString[0]){
                             gearsetItemString.Remove("Augmented");
                             
@@ -683,12 +531,8 @@ public class MainWindow : Window, IDisposable
                 GearCost costOfItem = COST[name];
 
                 if (gearsetItem.hasPiece){
-                    // if ((name == "weapon" || !buyTwineGlazeOnly) && !rawItem.Name.RawString.Contains("Augmented")){
-                    //     updatedCost[costOfItem.bookType-1] += (int)costOfItem.bookCost;
-                    // }
-                
+                    
                     if (rawItem.Name.RawString.Contains("Augmented")){
-                        // updatedCost[costOfItem.bookUpgradeType-1] += (int)costOfItem.bookUpgradeCost;
                         updatedCost += (int)costOfItem.tomeCost;
                     }
                 }
@@ -706,7 +550,7 @@ public class MainWindow : Window, IDisposable
     //different ways of calculating book costs
     //buying everything with books, including gear pieces + glaze/twine (gear sheet default)
     //buying only glaze/twine with books
-    protected uint[] getInitialCost(Gearset givenGearset, bool buyTwineGlazeOnly, bool checkAllPieces){
+    protected uint[] getInitialCost(Gearset givenGearset, bool buyTwineGlazeOnly){
         uint[] returnCost = new uint[5];
 
         Type type = givenGearset.GetType();
@@ -728,14 +572,6 @@ public class MainWindow : Window, IDisposable
                 if (!gearsetItem.hasPiece){
                     costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
                 }
-
-                // if (gearsetItem.hasPiece){
-                //     costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
-                // }
-
-                // else if(checkAllPieces){
-                //     costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
-                // }
             }
         }
 
@@ -743,8 +579,7 @@ public class MainWindow : Window, IDisposable
     }
 
     protected void costHelperFunction(string name, ExtendedItem rawItem, GearCost costOfItem, bool buyTwineGlazeOnly, uint[] returnCost){
-        //if it isnt an augmented piece && we're using books for all, add cost
-        // if ((name == "weapon" || !buyTwineGlazeOnly) && !rawItem.Name.RawString.Contains("Augmented")){
+
         if (name == "weapon" && buyTwineGlazeOnly){
             return;
         }
@@ -791,22 +626,6 @@ public class MainWindow : Window, IDisposable
                         }
                         break;
                     }
-                // if (System.Enum.IsDefined(typeof(raidDropIDs), id)){
-                //     // item.Quantity
-                //     if (id != (uint)raidDropIDs.Glaze && id != (uint)raidDropIDs.Twine){
-                //         playerGearCost.bookCount[raidDropIDToIndex[id]] = item.Quantity;
-                //     }
-
-                //     else{
-                //         if (id == (uint)raidDropIDs.Glaze){
-                //             playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.GLAZE;
-                //         }
-
-                //         else{
-                //             playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE_SOLVENT;
-                //         }
-                //     }
-                // }
                 }
             }
         }
