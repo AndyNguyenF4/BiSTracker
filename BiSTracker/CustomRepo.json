@@ -1,0 +1,25 @@
+[
+    {
+        "Author": "Andu Nguyen",
+        "Name": "BiSTracker",
+        "InternalName": "BiSTracker",
+        "AssemblyVersion": "0.0.0.1",
+        "Description": "A description that shows up in /xlplugins. List any major slash-command(s).",
+        "ApplicableVersion": "any",
+        "RepoUrl": "https://github.com/AndyNguyenF4/BiSTracker",
+        "Tags": [
+        "sample",
+        "plugin",
+        "goats",
+        "test"
+        ],
+        "DalamudApiLevel": 10,
+        "LoadRequiredState": 0,
+        "LoadSync": false,
+        "CanUnloadAsync": false,
+        "LoadPriority": 0,
+        "Punchline": "A short one-liner that shows up in /xlplugins.",
+        "Changelog": "",
+        "AcceptsFeedback": true
+    }
+]  
