@@ -14,6 +14,7 @@
         "test"
         ],
         "DalamudApiLevel": 10,
+        "DownloadLinkInstall": "https://github.com/AndyNguyenF4/BiSTracker/releases/download/v0.0.0.1/latest.zip",
         "LoadRequiredState": 0,
         "LoadSync": false,
         "CanUnloadAsync": false,
