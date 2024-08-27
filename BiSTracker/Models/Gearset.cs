@@ -1,9 +1,13 @@
 
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 
 namespace BiSTracker.Models;
 //figure out how to convert the dictionary of materia to an array of meldedmateria
-public class Gearset : IEnumerable{
+public class Gearset /*: IEnumerable*/{
 public Gearset(EtroGearsetParse inputGear){
         this.etroID = inputGear.id;
         this.name = inputGear.name;
@@ -40,10 +44,38 @@ public Gearset(EtroGearsetParse inputGear){
     public MeldedItem fingerL{get; set;}
     public MeldedItem fingerR{get; set;}
 
-    public IEnumerator GetEnumerator()
-    {
-        throw new System.NotImplementedException();
-    }
+    // public IEnumerator GetEnumerator()
+    // {
+    //     throw new System.NotImplementedException();
+    // }
 
+    public void fillMateria(Gearset playerGearset, Dictionary<string, Dictionary<string, ushort>> materiaDictionary){
+        Type type = playerGearset.GetType();
+        PropertyInfo[] properties = type.GetProperties();
+        
+        foreach (PropertyInfo property in properties){
+            string name = property.Name;
+            object value = property.GetValue(playerGearset);
+
+            if (value == null || property.PropertyType != typeof(MeldedItem)){
+                continue;
+            }
+            //find a way to remove L/R from ring string values
+            MeldedItem gearsetItem = (MeldedItem)value;
+
+            Dictionary<string, ushort> gearPieceMateria;
+            if (property.Name.Contains("finger")){
+                gearPieceMateria = materiaDictionary[gearsetItem.itemID.ToString() + name.Last()];
+            }
+
+            else{
+                gearPieceMateria = materiaDictionary[gearsetItem.itemID.ToString()];
+            }
+
+            foreach(KeyValuePair<string, ushort> kvp in gearPieceMateria){
+                gearsetItem.meldedMateria[uint.Parse(kvp.Key)-1] = new MeldedMateria(kvp.Value);
+            }  
+        }
+    }
     //food here for later?
 }

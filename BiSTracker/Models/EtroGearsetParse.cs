@@ -16,5 +16,5 @@ public class EtroGearsetParse{
     public uint wrists{get; set;}
     public uint fingerL{get; set;}
     public uint fingerR{get; set;}
-    public Dictionary<string, Dictionary<string, uint>>? materia{get; set;}
+    public Dictionary<string, Dictionary<string, ushort>>? materia{get; set;}
 }

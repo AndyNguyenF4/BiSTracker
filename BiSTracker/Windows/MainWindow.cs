@@ -31,6 +31,43 @@ public class MainWindow : Window, IDisposable
     private bool clickedDelete;
     private List<InventoryType> itemSpace;
     private DirectoryInfo savedSetsDirectory;
+    private Dictionary<ushort, InGameMateria> materiaIDMapping = new Dictionary<ushort, InGameMateria>{
+        [41781] = new InGameMateria(24, 11),
+        [41782] = new InGameMateria(25, 11),
+        [41771] = new InGameMateria(14, 11),
+        [41773] = new InGameMateria(16, 11),
+        [41772] = new InGameMateria(15, 11),
+        [41770] = new InGameMateria(7, 11),
+        [41774] = new InGameMateria(17, 11),
+
+        [41768] = new InGameMateria(24, 10),
+        [41769] = new InGameMateria(25, 10),
+        [41758] = new InGameMateria(14, 10),
+        [41760] = new InGameMateria(16, 10),
+        [41759] = new InGameMateria(15, 10),
+        [41757] = new InGameMateria(7, 10),
+        [41761] = new InGameMateria(17, 10)
+
+    };
+    
+    //change ushort to uint later for materiaid
+    private Dictionary<ushort, string> materiaIDToName = new Dictionary<ushort, string>{
+        [41772] = "CRT +54",
+        [41771] = "DH +54",
+        [41773] = "DET +54",
+        [41782] = "SPS +54",
+        [41781] = "SKS +54",
+        [41774] = "TEN +54",
+        [41770] = "PIE +54",
+        
+        [41759] = "CRT +18",
+        [41758] = "DH +18",
+        [41760] = "DET +18",
+        [41769] = "SPS +18",
+        [41768] = "SKS +18",
+        [41761] = "TEN +18",
+        [41757] = "PIE +18"
+    };
     private enum raidDropIDs : int{
         Book1 = 43549,
         Book2 = 43550,
@@ -306,6 +343,8 @@ public class MainWindow : Window, IDisposable
             if(response.IsSuccessStatusCode){
                 File.WriteAllText(directory + "\\" + etroID + ".json", responseBody);
                 Gearset temp = etroGearToGearSet(etroJsonToObject(etroID, directory));
+                
+                
                 // this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
                 savedGearsets.Add(etroID, temp);
                 foreach (var invTypeEnum in itemSpace){
@@ -333,7 +372,14 @@ public class MainWindow : Window, IDisposable
     }
 
     protected static Gearset etroGearToGearSet(EtroGearsetParse inputGear){
-        return new Gearset(inputGear);
+        //probably do materia adding here
+        Gearset returnEtroGearset = new Gearset(inputGear);
+        if (inputGear.materia != null){
+            returnEtroGearset.fillMateria(returnEtroGearset, inputGear.materia);
+        }
+
+        return returnEtroGearset;
+        // return new Gearset(inputGear);
     }
     public void DrawItems(Gearset gearsetTest){
         Type type = gearsetTest.GetType();
@@ -380,7 +426,34 @@ public class MainWindow : Window, IDisposable
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
                     
                     ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
+
+                    for (var j = 0; j < gearsetItem.meldedMateria.Length; j++){
+                        if (gearsetItem.meldedMateria[j] != null){
+                            ImGui.SameLine();
+                            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
+                            // ImGui.Text(materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString());  
+
+                            if (gearsetItem.meldedMateria[j].hasMateria){
+                                ImGui.TextColored(ImGuiColors.ParsedGreen, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
+                            }
+
+                            else{
+                                ImGui.TextColored(ImGuiColors.DalamudWhite, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
+                            }
+
+                            // ImGui.SameLine();
+                            // if (j == 0){
+                            //     ImGui.Text(gearsetItem.meldedMateria[0].tempMateriaID.ToString());
+                            //     ImGui.SameLine();
+                            //     ImGui.Text(gearsetItem.meldedMateria[0].grade.ToString());
+                            //     ImGui.SameLine();
+                            // }
+                            // ImGui.Text(gearsetItem.meldedMateria[j].hasMateria.ToString());
+                            // ImGui.Text(gearsetItem.meldedMateria[j].materiaID.ToString());                            
+                        }
+                    }
                 }
+                    
                 //test code for checkbox
 
                 // ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - 32);
@@ -459,11 +532,11 @@ public class MainWindow : Window, IDisposable
         for (uint i = 0; i < inventory->Size; i++){
             var item = inventory->Items[i];
             uint id = item.ItemId;
-
+            
             if (id == 0){
                 continue;
             }
-
+            
             Type type = givenGearset.GetType();
             PropertyInfo[] properties = type.GetProperties();
             // ExtendedItem rawItem = Data.ItemSheet.GetRow(id);
@@ -481,6 +554,21 @@ public class MainWindow : Window, IDisposable
                     
                     if (gearsetItem.itemID == id){
                         gearsetItem.hasPiece = true;
+                        // var materiaArray = item.Materia.ToArray();
+
+                        for (byte materiaIndex = 0; materiaIndex < 5; materiaIndex++){
+                            InGameMateria gameMateria = new InGameMateria(item.GetMateriaId(materiaIndex), item.GetMateriaGrade(materiaIndex));
+                            if((gearsetItem.meldedMateria[materiaIndex] != null) && materiaIDMapping[gearsetItem.meldedMateria[materiaIndex].materiaID].grade == gameMateria.grade && materiaIDMapping[gearsetItem.meldedMateria[materiaIndex].materiaID].materiaGameID == gameMateria.materiaGameID){
+                                gearsetItem.meldedMateria[materiaIndex].hasMateria = true;
+                            }
+                        }
+                        
+                        // var materiaID = item.GetMateriaId(0);
+                        // var materiaGrade = item.GetMateriaGrade(0);
+                        
+                        // gearsetItem.meldedMateria[0].tempMateriaID = materiaID;
+                        // gearsetItem.meldedMateria[0].grade = materiaGrade;
+
                         break;
 
                     }
