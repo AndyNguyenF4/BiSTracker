@@ -3,6 +3,10 @@
   "Name": "BiSTracker",
   "Punchline": "A short one-liner that shows up in /xlplugins.",
   "Description": "A description that shows up in /xlplugins. List any major slash-command(s).",
+  "Changelog": "",
+  "InternalName": "BiSTracker",
+  "AssemblyVersion":"1.0.0.00",
+  "RepoUrl": "https://github.com/AndyNguyenF4/BiSTracker",
   "ApplicableVersion": "any",
   "Tags": [
     "sample",
