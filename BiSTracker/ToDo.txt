@@ -22,6 +22,7 @@ If changing chars, reset hasPiece/isUnaugmented to false - TODO
 Display said gearset with melds in the main window - COMPLETED
 Fix formatting 
 Map small materia id + grade to stuff. Probably need an object to compile everything into. - COMPLETED
+figure out why !buyTwineGlazeOnly is inverted
 
 https://etro.gg/gearset/01f9c125-ff1e-4637-b2b4-8d3e01c48d8f 2.42
 https://etro.gg/gearset/9132ff2a-cdf8-499e-9e33-35d85aa61599 2.36

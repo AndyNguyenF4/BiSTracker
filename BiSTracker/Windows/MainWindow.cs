@@ -223,6 +223,7 @@ public class MainWindow : Window, IDisposable
             ImGui.Separator();
             ImGui.Spacing();
             
+            //checks all inv spaces for gear
             foreach (var invTypeEnum in itemSpace){
                 bisComparison(currentGearset, invTypeEnum);
             }
@@ -239,8 +240,12 @@ public class MainWindow : Window, IDisposable
                 0
             );
 
+            //1st array/playerGearsetCost.bookCount[] has the inventory count of books
+            //2nd array playerGearsetCost.remainingBookCost[] SHOULD HAVE the cost of missing pieces
+            // playerGearsetCost.
             playerGearsetCost.bookCount[4] = (uint)getTomes(currentGearset);
-            getCurrentBooksOrUpgrades(currentGearset, playerGearsetCost);
+            getCurrentBooksOrUpgrades(currentGearset, playerGearsetCost, Plugin.Configuration.buyTwineGlazeOnly);
+            calc(currentGearset, playerGearsetCost, Plugin.Configuration.buyTwineGlazeOnly);
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
@@ -248,7 +253,8 @@ public class MainWindow : Window, IDisposable
             ImGui.SameLine(0, 10);
             for (var index = 0; index < playerGearsetCost.bookCount.Length; index++){
                 if (index < playerGearsetCost.bookCount.Length-1){
-                    ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + playerGearsetCost.remainingBookCost[index]);
+                    // ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + playerGearsetCost.remainingBookCost[index] + " currentBookCost: " + playerGearsetCost.currentBookCost[index]);
+                    ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + (playerGearsetCost.remainingBookCost[index] - playerGearsetCost.currentBookCost[index]).ToString());
                     // ImGui.TextColored(playerGearsetCost.bookColors[index], (playerGearsetCost.remainingBookCost[index]-playerGearsetCost.bookCount[index]).ToString());
                     ImGui.SameLine(0, 15);
                 }
@@ -259,13 +265,15 @@ public class MainWindow : Window, IDisposable
                     ImGui.SameLine(0, 5);
                     var currentTome = getCurrentTomes();
                     // ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + playerGearsetCost.remainingBookCost[index]);
-                    if (playerGearsetCost.remainingBookCost[index]<playerGearsetCost.bookCount[index]){
-                        ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/0");
-                    }
+                    // ImGui.TextColored(playerGearsetCost.bookColors[4], currentTome.ToString() + "/" + getTomes(currentGearset).ToString() + " TotalTomeCost: " + playerGearsetCost.remainingBookCost[4]);
+                    ImGui.TextColored(playerGearsetCost.bookColors[4], currentTome.ToString() + "/" + (playerGearsetCost.remainingBookCost[4] - getTomes(currentGearset)).ToString());
+                    // if (playerGearsetCost.remainingBookCost[index]<playerGearsetCost.bookCount[index]){
+                    //     ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/0");
+                    // }
 
-                    else{
-                    ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/" + (playerGearsetCost.remainingBookCost[index]-playerGearsetCost.bookCount[index]).ToString());
-                    }
+                    // else{
+                    //     ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/" + (playerGearsetCost.remainingBookCost[index]-playerGearsetCost.bookCount[index]).ToString());
+                    // }
                 }
             }
         }
@@ -442,6 +450,7 @@ public class MainWindow : Window, IDisposable
                             }
 
                             // ImGui.SameLine();
+                            // ImGui.Text(gearsetItem.hasUnaugmented.ToString());
                             // if (j == 0){
                             //     ImGui.Text(gearsetItem.meldedMateria[0].tempMateriaID.ToString());
                             //     ImGui.SameLine();
@@ -579,7 +588,9 @@ public class MainWindow : Window, IDisposable
                         var currentItemString = currentInvItem.Name.RawString.Split(" ").ToList();
                         
                         if (gearsetItemString[1] == currentItemString[0]){
-                            gearsetItemString.Remove("Augmented");
+                            // gearsetItemString.Remove("Augmented");
+                            gearsetItemString.Remove(gearsetItemString.First());
+                            // gearsetItemString.Remove();
                             
                             var sameItemType = true;
                             for(var j = 0; j < gearsetItemString.Count; j++){
@@ -657,9 +668,14 @@ public class MainWindow : Window, IDisposable
 
                 GearCost costOfItem = COST[name];
 
-                if (!gearsetItem.hasPiece){
+                // if (!gearsetItem.hasPiece){
                     costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
-                }
+                // }
+
+                // if (!gearsetItem.hasPiece){
+
+                // }
+
             }
         }
 
@@ -667,6 +683,16 @@ public class MainWindow : Window, IDisposable
     }
 
     protected void costHelperFunction(string name, ExtendedItem rawItem, GearCost costOfItem, bool buyTwineGlazeOnly, uint[] returnCost){
+        //the overall function should grab the cost of missing pieces
+
+        //if you don't have a gearset piece, add the cost of the piece with books, and the cost of its upgrade if its a tome piece.
+        // if it is a raid piece && we !buyTwineGlazeOnly, add cost of books
+        // if it is a tome piece && we !buyTwineGlazeOnly, add cost of books for upgrade + tome cost
+
+        //if it is a tome piece && we buyTwineGlazeOnly, add cost of books for upgrade + tome cost
+        // 
+        //
+
 
         if (name == "weapon" && buyTwineGlazeOnly){
             return;
@@ -682,8 +708,50 @@ public class MainWindow : Window, IDisposable
         }
     }
 
+    protected void calc(Gearset givenGearset, PlayerGearCost playerGearCost, bool buyTwineGlazeOnly){
+        Type type = givenGearset.GetType();
+        PropertyInfo[] properties = type.GetProperties();
+        foreach (PropertyInfo property in properties){
+            string name = property.Name;
+            object value = property.GetValue(givenGearset);
+            if (value == null || name == "offHand"){
+                continue;
+            }
+
+            if (property.PropertyType == typeof(MeldedItem)){   
+                MeldedItem gearsetItem = (MeldedItem)value;
+                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                GearCost costOfItem = COST[name];
+
+                //ways of knowing what item is what
+                //if hasPiece then you have a raid or augmented tome piece, you can figure out which is which by a contains(Augmented) function.
+                if (gearsetItem.hasPiece){
+                    if (!rawItem.Name.RawString.Contains("Augmented") && !buyTwineGlazeOnly){
+                        playerGearCost.currentBookCost[costOfItem.bookType-1] += (uint)costOfItem.bookCost;
+                    }
+
+                    else if (rawItem.Name.RawString.Contains("Augmented")){
+                        playerGearCost.currentBookCost[costOfItem.bookUpgradeType-1] += (uint)costOfItem.bookUpgradeCost;
+
+                    }
+                }
+
+                else if (gearsetItem.hasUnaugmented){
+                    playerGearCost.remainingTotalTomes += (uint)costOfItem.tomeCost;
+                }
+
+                //if its a raid piece, subtract the books IF and ONLY if !buyTwineGlaze only.
+                //if its a tome piece, subtract the books of its corresponding upgrade type  
+
+                //if !hasPiece && hasUnaugmented, subtract tomes only
+
+            }        
+
+        }
+    }
+
     //probably new functions to look for books/upgrade augs here
-    protected unsafe void getCurrentBooksOrUpgrades(Gearset givenGearset, PlayerGearCost playerGearCost){
+    protected unsafe void getCurrentBooksOrUpgrades(Gearset givenGearset, PlayerGearCost playerGearCost, bool buyTwineGlazeOnly){
         for (int i = 0; i <= 5; i++){
             InventoryContainer* inventory = GetInventoryContainer(itemSpace[i]);
 
@@ -696,26 +764,75 @@ public class MainWindow : Window, IDisposable
                 }
 
                 foreach (raidDropIDs raidDropID in Enum.GetValues(typeof(raidDropIDs))){
-                    if ((uint)raidDropID == id){
-                        if (id != (uint)raidDropIDs.Glaze && id != (uint)raidDropIDs.Twine){
-                            playerGearCost.bookCount[raidDropIDToIndex[id]] = item.Quantity;
-                            
+                    if (id == (uint)raidDropID){
+                        if (id == (uint)raidDropIDs.Glaze){
+                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.GLAZE;
                         }
+
+                        else if (id == (uint)raidDropIDs.Twine){
+                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE_SOLVENT;
+                        }   
 
                         else{
-                            if (id == (uint)raidDropIDs.Glaze){
-                                playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.GLAZE;
-                            }
-
-                            else if (id == (uint)raidDropIDs.Twine){
-                                playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE_SOLVENT;
-                            }
-                            
-                        }
-                        break;
+                            playerGearCost.bookCount[raidDropIDToIndex[id]] = item.Quantity;
+                        }                    
                     }
                 }
+
+                // foreach (raidDropIDs raidDropID in Enum.GetValues(typeof(raidDropIDs))){
+                //     if ((uint)raidDropID == id){
+                //         if (id != (uint)raidDropIDs.Glaze && id != (uint)raidDropIDs.Twine){
+                //             playerGearCost.bookCount[raidDropIDToIndex[id]] = item.Quantity;
+                            
+                //         }
+
+                //         else{
+                //             if (id == (uint)raidDropIDs.Glaze){
+                //                 playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.GLAZE;
+                //             }
+
+                //             else if (id == (uint)raidDropIDs.Twine){
+                //                 playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE_SOLVENT;
+                //             }
+                            
+                //         }
+                //         break;
+                //     }
+                // }
             }
         }
+        
+        // Type type = givenGearset.GetType();
+        // PropertyInfo[] properties = type.GetProperties();
+        // foreach (PropertyInfo property in properties){
+        //     string name = property.Name;
+        //     object value = property.GetValue(givenGearset);
+        //     if (value == null || name == "offHand"){
+        //         continue;
+        //     }
+
+        //     if (property.PropertyType == typeof(MeldedItem)){
+                
+        //         MeldedItem gearsetItem = (MeldedItem)value;
+        //         ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+
+        //         GearCost costOfItem = COST[name];
+
+        //         if (gearsetItem.hasPiece){
+        //             if (name == "weapon" && buyTwineGlazeOnly){
+        //                 return;
+        //             }
+
+        //             if ((!buyTwineGlazeOnly) && !rawItem.Name.RawString.Contains("Augmented")){
+        //                 playerGearCost.remainingBookCost[costOfItem.bookType-1] -= (uint)costOfItem.bookCost;
+        //             }
+                    
+        //             else if (rawItem.Name.RawString.Contains("Augmented")){
+        //                 playerGearCost.remainingBookCost[costOfItem.bookUpgradeType-1] -= (uint)costOfItem.bookUpgradeCost;
+        //                 playerGearCost.remainingBookCost[4] -= (uint)costOfItem.tomeCost;
+        //             }
+        //         }
+        //     }
+        // }
     }
 }

@@ -7,6 +7,8 @@ public struct PlayerGearCost{
     public uint[] bookCount;
     public uint[] remainingBookCost;
 
+    public uint[] currentBookCost = new uint[4];
+
     public uint currentTomes;
     public uint remainingTotalTomes;
     public Vector4[] bookColors = [ImGuiColors.DalamudRed, ImGuiColors.DalamudOrange, ImGuiColors.ParsedGreen, ImGuiColors.DalamudGrey, ImGuiColors.ParsedGold];
