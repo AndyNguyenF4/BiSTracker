@@ -16,8 +16,11 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game;
+// using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
 using Dalamud.IoC;
+using System.Net;
 
 namespace BiSTracker.Windows;
 public class MainWindow : Window, IDisposable
@@ -27,8 +30,9 @@ public class MainWindow : Window, IDisposable
     private string etroID = "";
     private string[] etroImportStringSplit = new string[2];
     private static readonly HttpClient client = new HttpClient();
-    private string placeholder =""; //delete later
     private bool clickedDelete;
+    // private bool currentCharSwapped = false; //delete this and currentChar?
+    // private string currentChar = ""; 
     private List<InventoryType> itemSpace;
     private DirectoryInfo savedSetsDirectory;
     private Dictionary<ushort, InGameMateria> materiaIDMapping = new Dictionary<ushort, InGameMateria>{
@@ -88,37 +92,34 @@ public class MainWindow : Window, IDisposable
 
     //skip raidOffHand
     public enum bookCost : int{
-        BOOK_WEAP = 8,
-        BOOK_HEAD_HANDS_FEET = 4,
-        BOOK_CHEST_LEGS = 6,
-        BOOK_ACCESSORY = 3,
-        TWINE_SOLVENT = 4,
+        WEAP = 8,
+        HEAD_HANDS_FEET = 4,
+        CHEST_LEGS = 6,
+        ACCESSORY = 3,
+        TWINE = 4,
         GLAZE = 3
     };
 
     public enum tomeCost : int{
-        TOME_WEAP = 500,
-        TOME_HEAD_HANDS_FEET = 495,
-        TOME_CHEST_LEGS = 825,
-        TOME_ACCESSORY = 375
+        WEAP = 500,
+        HEAD_HANDS_FEET = 495,
+        CHEST_LEGS = 825,
+        ACCESSORY = 375
     }
     //tomeCost tomeCost, bookCost bookCost, int bookType, bookCost bookUpgradeCost, int bookUpgradeType
     private Dictionary<string, GearCost> COST = new Dictionary<string, GearCost>{
-        ["weapon"] = new GearCost(tomeCost.TOME_WEAP, bookCost.BOOK_WEAP, 4, bookCost.TWINE_SOLVENT, 3),
-        ["head"] = new GearCost(tomeCost.TOME_HEAD_HANDS_FEET, bookCost.BOOK_HEAD_HANDS_FEET, 2, bookCost.TWINE_SOLVENT, 3),
-        ["body"] = new GearCost(tomeCost.TOME_CHEST_LEGS, bookCost.BOOK_CHEST_LEGS, 3, bookCost.TWINE_SOLVENT, 3),
-        ["hands"] = new GearCost(tomeCost.TOME_HEAD_HANDS_FEET, bookCost.BOOK_HEAD_HANDS_FEET, 2, bookCost.TWINE_SOLVENT, 3),
-        ["legs"] = new GearCost(tomeCost.TOME_CHEST_LEGS, bookCost.BOOK_CHEST_LEGS, 3, bookCost.TWINE_SOLVENT, 3),
-        ["feet"] = new GearCost(tomeCost.TOME_HEAD_HANDS_FEET, bookCost.BOOK_HEAD_HANDS_FEET, 2, bookCost.TWINE_SOLVENT, 3),
-        ["ears"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
-        ["neck"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
-        ["wrists"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
-        ["fingerL"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2),
-        ["fingerR"] = new GearCost(tomeCost.TOME_ACCESSORY, bookCost.BOOK_ACCESSORY, 1, bookCost.GLAZE, 2)
+        ["weapon"] = new GearCost(tomeCost.WEAP, bookCost.WEAP, 4, bookCost.TWINE, 3),
+        ["head"] = new GearCost(tomeCost.HEAD_HANDS_FEET, bookCost.HEAD_HANDS_FEET, 2, bookCost.TWINE, 3),
+        ["body"] = new GearCost(tomeCost.CHEST_LEGS, bookCost.CHEST_LEGS, 3, bookCost.TWINE, 3),
+        ["hands"] = new GearCost(tomeCost.HEAD_HANDS_FEET, bookCost.HEAD_HANDS_FEET, 2, bookCost.TWINE, 3),
+        ["legs"] = new GearCost(tomeCost.CHEST_LEGS, bookCost.CHEST_LEGS, 3, bookCost.TWINE, 3),
+        ["feet"] = new GearCost(tomeCost.HEAD_HANDS_FEET, bookCost.HEAD_HANDS_FEET, 2, bookCost.TWINE, 3),
+        ["ears"] = new GearCost(tomeCost.ACCESSORY, bookCost.ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["neck"] = new GearCost(tomeCost.ACCESSORY, bookCost.ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["wrists"] = new GearCost(tomeCost.ACCESSORY, bookCost.ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["fingerL"] = new GearCost(tomeCost.ACCESSORY, bookCost.ACCESSORY, 1, bookCost.GLAZE, 2),
+        ["fingerR"] = new GearCost(tomeCost.ACCESSORY, bookCost.ACCESSORY, 1, bookCost.GLAZE, 2)
     };
-    private int[] remainingBooks = [0, 0, 0, 0];
-    private int[] remainingAugments = [0, 0];
-
     private Dictionary<string, Gearset>? savedGearsets;
     private Gearset? currentGearset;
     private Plugin Plugin;
@@ -147,14 +148,21 @@ public class MainWindow : Window, IDisposable
         }
 
         if (savedGearsets.Count > 0){
-            currentGearset = savedGearsets.First().Value; 
-            // currentGearset = savedGearsets[Plugin.Configuration.lastSavedSet];
+            if (Plugin.Configuration.lastSavedSet.Length == 0){
+                currentGearset = savedGearsets.First().Value; 
+            }
+            
+            else{
+                currentGearset = savedGearsets[Plugin.Configuration.lastSavedSet];
+            }
         }
 
         else{
             currentGearset = null;
         }
+
         clickedDelete = false;
+        Plugin.ClientState.Logout += clearItemFlags;
     }
 
     public void Dispose() {}
@@ -165,15 +173,24 @@ public class MainWindow : Window, IDisposable
         ImGui.BeginGroup();
         ImGui.InputTextWithHint("##EtroImportTextBox", "Insert Etro URL and click \"Import\"", ref etroImportString, 61);
         ImGui.SameLine();
-        if(ImGui.Button("Import" + "###EtroImportButton")){
+        if(ImGui.Button("Import" + "##EtroImportButton")){
         
             //if import string >= 0 then attempt to read etro link and then reset string
             if(etroImportString.Length > 0){
                 etroImport(etroImportString, savedSetsDirectory);
             }
         }
-        
 
+        ImGui.SameLine();
+        if(ImGui.Button("Inventory Sync##SyncButton")){
+            if (savedGearsets != null){
+                if (savedGearsets.Count > 0){
+                    clearItemFlags();
+                }
+            }
+        }
+
+        
         // ImGui.Combo(); //string label, ref int current_item, string[] items, int items_count (items.length)
 
         if (savedGearsets != null){
@@ -183,6 +200,7 @@ public class MainWindow : Window, IDisposable
                 var dropdownIndexReference = 0;
                 foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
                     arrayOfGearsets[currentIndexGearset] = kvp.Value.name;
+                    //this sets the gearset indexing to the currentgearset, so figure out a way to implement saving last set and loading it first
                     if (kvp.Value.Equals(currentGearset)){
                         dropdownIndexReference = currentIndexGearset;
                     }
@@ -192,6 +210,7 @@ public class MainWindow : Window, IDisposable
                     }
                 }               
                 
+                //FIGURE OUT WHAT CODE DOES AGAIN, BUT MAYBE WE CAN JUST SAVE SET INDEX INSTEAD OF NAME?
                 //should probably add a lastSavedSet config to load the last one for users on startup
                 if(ImGui.Combo("##GearsetDropDown", ref dropdownIndexReference, arrayOfGearsets, arrayOfGearsets.Length)){
                     var tempIndex = 0;
@@ -200,8 +219,9 @@ public class MainWindow : Window, IDisposable
                         if (kvp.Value.name == arrayOfGearsets[dropdownIndexReference]){
                             dropdownIndexReference = tempIndex;
                             currentGearset = savedGearsets[kvp.Key];
-                            // Plugin.Configuration.lastSavedSet = kvp.Key;
-                            // Plugin.Configuration.Save();
+                            Plugin.Configuration.lastSavedSet = kvp.Key;
+                            // Plugin.Configuration.lastSavedSet = kvp.Value.etroID;
+                            Plugin.Configuration.Save();
                         }
                         if(tempIndex<arrayOfGearsets.Length-1){
                             tempIndex++;
@@ -278,14 +298,9 @@ public class MainWindow : Window, IDisposable
             }
         }
 
-        ImGui.Text(placeholder);
-
-        ImGui.Text(savedSetsDirectory.ToString());
-
         ImGui.EndGroup();
         
         //sample plugin stuff
-        ImGui.Text($"The random config bool is {Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
 
         if (ImGui.Button("Show Settings"))
         {
@@ -312,6 +327,50 @@ public class MainWindow : Window, IDisposable
         // Plugin.Configuration.Save();
 
     }
+
+    //get player name here later
+    // protected unsafe IPlayerCharacter? GetActor() {
+	// 	// The local player is easy to deal with.
+	// 	return Plugin.ClientState.LocalPlayer;
+    //     // return Plugin.ClientState.Login += 
+	// }
+
+    //have this function iterate through every gearset, so that for each meldedItem, it clears their flags 
+    //and also iterates through the meldedMateria and clears those falgs
+    protected void clearItemFlags(){
+        if (savedGearsets != null){
+            if (savedGearsets.Count > 0){
+                foreach (KeyValuePair<string, Gearset> kvp in savedGearsets){
+                    var currentSet = kvp.Value;
+                    
+                    Type type = currentSet.GetType();
+                    PropertyInfo[] properties = type.GetProperties();
+                    
+                    foreach (PropertyInfo property in properties){
+                        object value = property.GetValue(currentSet);
+                        
+                        if (value == null){
+                            continue;
+                        }
+
+                        if (property.PropertyType == typeof(MeldedItem)){
+                            MeldedItem gearsetItem = (MeldedItem)value;
+                            gearsetItem.hasPiece = false;
+                            gearsetItem.hasUnaugmented = false;
+
+                            foreach (MeldedMateria materia in gearsetItem.meldedMateria){
+                                if (materia != null){
+                                    materia.hasMateria = false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
 
     protected unsafe uint getCurrentTomes(){
         uint id = Data.TomestonesSheet.Where(tomestone => tomestone.Tomestones.Row is 3).First().Item.Row;
@@ -405,8 +464,7 @@ public class MainWindow : Window, IDisposable
 
             if (property.PropertyType == typeof(MeldedItem)){
                 MeldedItem gearsetItem = (MeldedItem)value;
-
-                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); //gearID[i] originally in here
+                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); 
                 
                 var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
                 int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
@@ -438,8 +496,7 @@ public class MainWindow : Window, IDisposable
                     for (var j = 0; j < gearsetItem.meldedMateria.Length; j++){
                         if (gearsetItem.meldedMateria[j] != null){
                             ImGui.SameLine();
-                            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
-                            // ImGui.Text(materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString());  
+                            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);  
 
                             if (gearsetItem.meldedMateria[j].hasMateria){
                                 ImGui.TextColored(ImGuiColors.ParsedGreen, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
@@ -447,18 +504,7 @@ public class MainWindow : Window, IDisposable
 
                             else{
                                 ImGui.TextColored(ImGuiColors.DalamudWhite, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
-                            }
-
-                            // ImGui.SameLine();
-                            // ImGui.Text(gearsetItem.hasUnaugmented.ToString());
-                            // if (j == 0){
-                            //     ImGui.Text(gearsetItem.meldedMateria[0].tempMateriaID.ToString());
-                            //     ImGui.SameLine();
-                            //     ImGui.Text(gearsetItem.meldedMateria[0].grade.ToString());
-                            //     ImGui.SameLine();
-                            // }
-                            // ImGui.Text(gearsetItem.meldedMateria[j].hasMateria.ToString());
-                            // ImGui.Text(gearsetItem.meldedMateria[j].materiaID.ToString());                            
+                            }                         
                         }
                     }
                 }
@@ -521,6 +567,7 @@ public class MainWindow : Window, IDisposable
             savedGearsets.Remove(currentGearset.etroID);
             File.Delete(savedSetsDirectory + "\\" + currentGearset.etroID + ".json");
             Plugin.Configuration.availableGearsets.Remove(currentGearset.etroID);
+            Plugin.Configuration.lastSavedSet = "";
             Plugin.Configuration.Save();
             if (savedGearsets.Count != 0){
                 currentGearset = savedGearsets.First().Value;
@@ -536,7 +583,12 @@ public class MainWindow : Window, IDisposable
         return ret;
     }
     protected unsafe void bisComparison(Gearset givenGearset, InventoryType invTypeEnum){
+        
         InventoryContainer* inventory = GetInventoryContainer(invTypeEnum);
+        
+        if (inventory == null){
+            return;
+        }
 
         for (uint i = 0; i < inventory->Size; i++){
             var item = inventory->Items[i];
@@ -754,6 +806,9 @@ public class MainWindow : Window, IDisposable
     protected unsafe void getCurrentBooksOrUpgrades(Gearset givenGearset, PlayerGearCost playerGearCost, bool buyTwineGlazeOnly){
         for (int i = 0; i <= 5; i++){
             InventoryContainer* inventory = GetInventoryContainer(itemSpace[i]);
+            if (inventory == null){
+                continue;
+            }
 
             for (var j = 0; j < inventory->Size; j++){
                 var item = inventory->Items[j];
@@ -770,7 +825,7 @@ public class MainWindow : Window, IDisposable
                         }
 
                         else if (id == (uint)raidDropIDs.Twine){
-                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE_SOLVENT;
+                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE;
                         }   
 
                         else{

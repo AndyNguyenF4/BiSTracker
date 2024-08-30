@@ -12,8 +12,8 @@ public class MeldedMateria{
 	public ushort materiaID;
 	public bool hasMateria;
 
-	public ushort tempMateriaID;
-	public byte grade;
+	// public ushort tempMateriaID;
+	// public byte grade;
 
 	public Materia? Row() {
 		if (!Data.CheckSheets())

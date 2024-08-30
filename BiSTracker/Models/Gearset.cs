@@ -50,12 +50,14 @@ public Gearset(EtroGearsetParse inputGear){
     // }
 
     public void fillMateria(Gearset playerGearset, Dictionary<string, Dictionary<string, ushort>> materiaDictionary){
+        // Type type = this.GetType();
         Type type = playerGearset.GetType();
         PropertyInfo[] properties = type.GetProperties();
         
         foreach (PropertyInfo property in properties){
             string name = property.Name;
             object value = property.GetValue(playerGearset);
+            // object value = property.GetValue(this);
 
             if (value == null || property.PropertyType != typeof(MeldedItem)){
                 continue;

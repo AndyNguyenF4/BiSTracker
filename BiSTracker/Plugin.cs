@@ -17,6 +17,8 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
 
+    [PluginService] internal IClientState ClientState { get; init; }
+
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!; //gets lumina object
 
     private const string CommandName = "/bis";
@@ -47,7 +49,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "A useful message to display in /xlhelp"
+            HelpMessage = "Displays the BiS Tracker window."
         });
 
         PluginInterface.UiBuilder.Draw += DrawUI;
