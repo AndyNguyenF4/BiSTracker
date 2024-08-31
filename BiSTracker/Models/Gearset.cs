@@ -1,32 +1,31 @@
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
 namespace BiSTracker.Models;
-//figure out how to convert the dictionary of materia to an array of meldedmateria
-public class Gearset /*: IEnumerable*/{
+
+public class Gearset{
 public Gearset(EtroGearsetParse inputGear){
-        this.etroID = inputGear.id;
-        this.name = inputGear.name;
-        this.weapon = new MeldedItem(inputGear.weapon, new MeldedMateria[5]);
-        this.head = new MeldedItem(inputGear.head, new MeldedMateria[5]);
-        this.body = new MeldedItem(inputGear.body, new MeldedMateria[5]);
-        this.hands = new MeldedItem(inputGear.hands, new MeldedMateria[5]);
-        this.legs = new MeldedItem(inputGear.legs, new MeldedMateria[5]);
-        this.feet = new MeldedItem(inputGear.feet, new MeldedMateria[5]);
+        etroID = inputGear.id;
+        name = inputGear.name;
+        weapon = new MeldedItem(inputGear.weapon, new MeldedMateria[5]);
+        head = new MeldedItem(inputGear.head, new MeldedMateria[5]);
+        body = new MeldedItem(inputGear.body, new MeldedMateria[5]);
+        hands = new MeldedItem(inputGear.hands, new MeldedMateria[5]);
+        legs = new MeldedItem(inputGear.legs, new MeldedMateria[5]);
+        feet = new MeldedItem(inputGear.feet, new MeldedMateria[5]);
         
         if (inputGear.offHand != null){
-            this.offHand = new MeldedItem((uint)inputGear.offHand, new MeldedMateria[5]);
+            offHand = new MeldedItem((uint)inputGear.offHand, new MeldedMateria[5]);
         }
 
-        this.ears = new MeldedItem(inputGear.ears, new MeldedMateria[5]);
-        this.neck = new MeldedItem(inputGear.neck, new MeldedMateria[5]);
-        this.wrists = new MeldedItem(inputGear.wrists, new MeldedMateria[5]);
-        this.fingerL = new MeldedItem(inputGear.fingerL, new MeldedMateria[5]);
-        this.fingerR = new MeldedItem(inputGear.fingerR, new MeldedMateria[5]);
+        ears = new MeldedItem(inputGear.ears, new MeldedMateria[5]);
+        neck = new MeldedItem(inputGear.neck, new MeldedMateria[5]);
+        wrists = new MeldedItem(inputGear.wrists, new MeldedMateria[5]);
+        fingerL = new MeldedItem(inputGear.fingerL, new MeldedMateria[5]);
+        fingerR = new MeldedItem(inputGear.fingerR, new MeldedMateria[5]);
     }
     
     public string etroID{get; set;}
@@ -44,20 +43,13 @@ public Gearset(EtroGearsetParse inputGear){
     public MeldedItem fingerL{get; set;}
     public MeldedItem fingerR{get; set;}
 
-    // public IEnumerator GetEnumerator()
-    // {
-    //     throw new System.NotImplementedException();
-    // }
-
-    public void fillMateria(Gearset playerGearset, Dictionary<string, Dictionary<string, ushort>> materiaDictionary){
-        // Type type = this.GetType();
-        Type type = playerGearset.GetType();
+    public void fillMateria(Dictionary<string, Dictionary<string, ushort>> materiaDictionary){ 
+        Type type = GetType();
         PropertyInfo[] properties = type.GetProperties();
         
         foreach (PropertyInfo property in properties){
             string name = property.Name;
-            object value = property.GetValue(playerGearset);
-            // object value = property.GetValue(this);
+            object value = property.GetValue(this);
 
             if (value == null || property.PropertyType != typeof(MeldedItem)){
                 continue;

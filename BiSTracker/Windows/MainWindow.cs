@@ -16,11 +16,6 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game;
-// using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Plugin.Services;
-using Dalamud.IoC;
-using System.Net;
 
 namespace BiSTracker.Windows;
 public class MainWindow : Window, IDisposable
@@ -28,11 +23,9 @@ public class MainWindow : Window, IDisposable
     private string GoatImagePath; //delete later
     private string etroImportString = "";
     private string etroID = "";
-    private string[] etroImportStringSplit = new string[2];
+    // private string[] etroImportStringSplit = new string[2];
     private static readonly HttpClient client = new HttpClient();
     private bool clickedDelete;
-    // private bool currentCharSwapped = false; //delete this and currentChar?
-    // private string currentChar = ""; 
     private List<InventoryType> itemSpace;
     private DirectoryInfo savedSetsDirectory;
     private Dictionary<ushort, InGameMateria> materiaIDMapping = new Dictionary<ushort, InGameMateria>{
@@ -51,7 +44,6 @@ public class MainWindow : Window, IDisposable
         [41759] = new InGameMateria(15, 10),
         [41757] = new InGameMateria(7, 10),
         [41761] = new InGameMateria(17, 10)
-
     };
     
     //change ushort to uint later for materiaid
@@ -140,7 +132,6 @@ public class MainWindow : Window, IDisposable
         Plugin = plugin;
         savedSetsDirectory = directory;
         savedGearsets = new Dictionary<string, Gearset>();
-
         itemSpace = [InventoryType.SaddleBag1, InventoryType.SaddleBag2, InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4, InventoryType.EquippedItems, InventoryType.ArmoryOffHand, InventoryType.ArmoryMainHand, InventoryType.ArmoryHead, InventoryType.ArmoryBody, InventoryType.ArmoryHands, InventoryType.ArmoryLegs, InventoryType.ArmoryFeets, InventoryType.ArmoryEar, InventoryType.ArmoryNeck, InventoryType.ArmoryWrist, InventoryType.ArmoryRings];
 
         foreach (var set in plugin.Configuration.availableGearsets){
@@ -169,7 +160,6 @@ public class MainWindow : Window, IDisposable
     public override void Draw()
     {
         //etro links are 60 chars long, 61 for C# esc char?
-
         ImGui.BeginGroup();
         ImGui.InputTextWithHint("##EtroImportTextBox", "Insert Etro URL and click \"Import\"", ref etroImportString, 61);
         ImGui.SameLine();
@@ -190,54 +180,10 @@ public class MainWindow : Window, IDisposable
             }
         }
 
-        
         // ImGui.Combo(); //string label, ref int current_item, string[] items, int items_count (items.length)
 
-        if (savedGearsets != null){
-            if (savedGearsets.Count > 0){
-                var arrayOfGearsets = new string[savedGearsets.Count];
-                var currentIndexGearset = 0;
-                var dropdownIndexReference = 0;
-                foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
-                    arrayOfGearsets[currentIndexGearset] = kvp.Value.name;
-                    //this sets the gearset indexing to the currentgearset, so figure out a way to implement saving last set and loading it first
-                    if (kvp.Value.Equals(currentGearset)){
-                        dropdownIndexReference = currentIndexGearset;
-                    }
-
-                    if (currentIndexGearset<arrayOfGearsets.Length-1){
-                        currentIndexGearset++;
-                    }
-                }               
-                
-                //FIGURE OUT WHAT CODE DOES AGAIN, BUT MAYBE WE CAN JUST SAVE SET INDEX INSTEAD OF NAME?
-                //should probably add a lastSavedSet config to load the last one for users on startup
-                if(ImGui.Combo("##GearsetDropDown", ref dropdownIndexReference, arrayOfGearsets, arrayOfGearsets.Length)){
-                    var tempIndex = 0;
-                    
-                    foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
-                        if (kvp.Value.name == arrayOfGearsets[dropdownIndexReference]){
-                            dropdownIndexReference = tempIndex;
-                            currentGearset = savedGearsets[kvp.Key];
-                            Plugin.Configuration.lastSavedSet = kvp.Key;
-                            // Plugin.Configuration.lastSavedSet = kvp.Value.etroID;
-                            Plugin.Configuration.Save();
-                        }
-                        if(tempIndex<arrayOfGearsets.Length-1){
-                            tempIndex++;
-                        }
-                    }
-                }
-                ImGui.SameLine();
-                DrawDeleteButton();
-            }
-        }
+        drawDropdown();
         
-
-        // if (currentGearset != null && ImGui.CollapsingHeader("Items" + $"({currentGearset.name})##GearsetItemsCollapsingHeader", ImGuiTreeNodeFlags.DefaultOpen)){
-        //     bisComparison(currentGearset);
-        //     DrawItems(currentGearset);
-        // }
         if (currentGearset != null){
             ImGui.Spacing();
             ImGui.Separator();
@@ -248,54 +194,8 @@ public class MainWindow : Window, IDisposable
                 bisComparison(currentGearset, invTypeEnum);
             }
 
-            // bisComparison(currentGearset);
             DrawItems(currentGearset);
-            // foreach (var value in currentGearsetCost){
-            //     ImGui.Text(value.ToString());
-            // }
-            PlayerGearCost playerGearsetCost = new PlayerGearCost(
-                new uint[5],
-                getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly),
-                0,
-                0
-            );
-
-            //1st array/playerGearsetCost.bookCount[] has the inventory count of books
-            //2nd array playerGearsetCost.remainingBookCost[] SHOULD HAVE the cost of missing pieces
-            // playerGearsetCost.
-            playerGearsetCost.bookCount[4] = (uint)getTomes(currentGearset);
-            getCurrentBooksOrUpgrades(currentGearset, playerGearsetCost, Plugin.Configuration.buyTwineGlazeOnly);
-            calc(currentGearset, playerGearsetCost, Plugin.Configuration.buyTwineGlazeOnly);
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Spacing();
-            ImGui.Text("Books:");
-            ImGui.SameLine(0, 10);
-            for (var index = 0; index < playerGearsetCost.bookCount.Length; index++){
-                if (index < playerGearsetCost.bookCount.Length-1){
-                    // ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + playerGearsetCost.remainingBookCost[index] + " currentBookCost: " + playerGearsetCost.currentBookCost[index]);
-                    ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + (playerGearsetCost.remainingBookCost[index] - playerGearsetCost.currentBookCost[index]).ToString());
-                    // ImGui.TextColored(playerGearsetCost.bookColors[index], (playerGearsetCost.remainingBookCost[index]-playerGearsetCost.bookCount[index]).ToString());
-                    ImGui.SameLine(0, 15);
-                }
-
-                else{
-                    ImGui.NewLine();
-                    ImGui.Text("Tomes: ");
-                    ImGui.SameLine(0, 5);
-                    var currentTome = getCurrentTomes();
-                    // ImGui.TextColored(playerGearsetCost.bookColors[index], playerGearsetCost.bookCount[index] + "/" + playerGearsetCost.remainingBookCost[index]);
-                    // ImGui.TextColored(playerGearsetCost.bookColors[4], currentTome.ToString() + "/" + getTomes(currentGearset).ToString() + " TotalTomeCost: " + playerGearsetCost.remainingBookCost[4]);
-                    ImGui.TextColored(playerGearsetCost.bookColors[4], currentTome.ToString() + "/" + (playerGearsetCost.remainingBookCost[4] - getTomes(currentGearset)).ToString());
-                    // if (playerGearsetCost.remainingBookCost[index]<playerGearsetCost.bookCount[index]){
-                    //     ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/0");
-                    // }
-
-                    // else{
-                    //     ImGui.TextColored(playerGearsetCost.bookColors[index], $"{currentTome}/" + (playerGearsetCost.remainingBookCost[index]-playerGearsetCost.bookCount[index]).ToString());
-                    // }
-                }
-            }
+            drawBookAndTomes();
         }
 
         ImGui.EndGroup();
@@ -328,15 +228,106 @@ public class MainWindow : Window, IDisposable
 
     }
 
-    //get player name here later
-    // protected unsafe IPlayerCharacter? GetActor() {
-	// 	// The local player is easy to deal with.
-	// 	return Plugin.ClientState.LocalPlayer;
-    //     // return Plugin.ClientState.Login += 
-	// }
+    protected void drawBookAndTomes(){
+        PlayerGearCost playerGearsetCost = new PlayerGearCost(
+            new uint[5],
+            getInitialCost(currentGearset, Plugin.Configuration.buyTwineGlazeOnly),
+            getCurrentTomes(),
+            (uint)getTomes(currentGearset)
+        );
 
-    //have this function iterate through every gearset, so that for each meldedItem, it clears their flags 
-    //and also iterates through the meldedMateria and clears those falgs
+        getCurrentBooksOrUpgrades(currentGearset, playerGearsetCost, Plugin.Configuration.buyTwineGlazeOnly);
+        calc(currentGearset, playerGearsetCost, Plugin.Configuration.buyTwineGlazeOnly);
+        
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+        ImGui.Text("Books:");
+        ImGui.SameLine(0, 10);
+
+        for (var index = 0; index < playerGearsetCost.bookCount.Length; index++){
+            if (index < playerGearsetCost.bookCount.Length-1){
+                var currentBooks = playerGearsetCost.bookCount[index];
+                var remainingBookCost = playerGearsetCost.remainingBookCost[index];
+                var currentBookCost = playerGearsetCost.currentBookCost[index];
+                var calculatedBookCost = remainingBookCost-currentBookCost;
+                var colorText = playerGearsetCost.bookColors[index];
+
+                if (currentBookCost > remainingBookCost){
+                    ImGui.TextColored(colorText, $"{currentBooks}/0");
+                }
+
+                else{
+                    ImGui.TextColored(colorText, $"{currentBooks}/{calculatedBookCost}");//+ (remainingBookCost-currentBookCost).ToString()
+                }
+
+                ImGui.SameLine(0, 15);
+            }
+
+            else{
+                var currentTomes = playerGearsetCost.currentTomes;
+                var totalTomeCost = playerGearsetCost.remainingBookCost[index];
+                var remainingTomes = playerGearsetCost.remainingTotalTomes;
+                var overallRemainingTomes = totalTomeCost-remainingTomes;
+                var colorText = playerGearsetCost.bookColors[index];
+                
+                ImGui.NewLine();
+                ImGui.Text("Tomes: ");
+                ImGui.SameLine(0, 5);
+                
+                ImGui.TextColored(colorText, $"{currentTomes}/{overallRemainingTomes}");
+            }
+        }
+
+        ImGui.NewLine();
+
+        bool buyTwineGlazeOnly = Plugin.Configuration.buyTwineGlazeOnly;
+        if (ImGui.Checkbox("Use books for Twines and Glazes only", ref buyTwineGlazeOnly)){
+            Plugin.Configuration.buyTwineGlazeOnly = buyTwineGlazeOnly;
+            Plugin.Configuration.Save();
+        }
+        ImGui.NewLine();
+    }
+
+    protected void drawDropdown(){
+        if (savedGearsets != null){
+            if (savedGearsets.Count > 0){
+                var arrayOfGearsets = new string[savedGearsets.Count];
+                var currentIndexGearset = 0;
+                var dropdownIndexReference = 0;
+                foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
+                    arrayOfGearsets[currentIndexGearset] = kvp.Value.name;
+                    //this sets the gearset indexing to the currentgearset, so figure out a way to implement saving last set and loading it first
+                    if (kvp.Value.Equals(currentGearset)){
+                        dropdownIndexReference = currentIndexGearset;
+                    }
+
+                    if (currentIndexGearset<arrayOfGearsets.Length-1){
+                        currentIndexGearset++;
+                    }
+                }               
+                
+                if(ImGui.Combo("##GearsetDropDown", ref dropdownIndexReference, arrayOfGearsets, arrayOfGearsets.Length)){
+                    var tempIndex = 0;
+                    
+                    foreach(KeyValuePair<string, Gearset> kvp in savedGearsets){
+                        if (kvp.Value.name == arrayOfGearsets[dropdownIndexReference]){
+                            dropdownIndexReference = tempIndex;
+                            currentGearset = savedGearsets[kvp.Key];
+                            Plugin.Configuration.lastSavedSet = kvp.Key;
+                            Plugin.Configuration.Save();
+                        }
+                        if(tempIndex<arrayOfGearsets.Length-1){
+                            tempIndex++;
+                        }
+                    }
+                }
+                ImGui.SameLine();
+                DrawDeleteButton();
+            }
+        }
+    }
+
     protected void clearItemFlags(){
         if (savedGearsets != null){
             if (savedGearsets.Count > 0){
@@ -355,6 +346,7 @@ public class MainWindow : Window, IDisposable
 
                         if (property.PropertyType == typeof(MeldedItem)){
                             MeldedItem gearsetItem = (MeldedItem)value;
+                            
                             gearsetItem.hasPiece = false;
                             gearsetItem.hasUnaugmented = false;
 
@@ -369,9 +361,6 @@ public class MainWindow : Window, IDisposable
             }
         }
     }
-
-
-
     protected unsafe uint getCurrentTomes(){
         uint id = Data.TomestonesSheet.Where(tomestone => tomestone.Tomestones.Row is 3).First().Item.Row;
         var returnVal = InventoryManager.Instance()->GetTomestoneCount(id);
@@ -400,7 +389,7 @@ public class MainWindow : Window, IDisposable
             etroID = etroURL[i] + etroID;
         }
 
-        etroImportStringSplit = etroURL.Split("gearsets/");
+        // var etroImportStringSplit = etroURL.Split("gearsets/");
 
         Task.Run(async () =>
         {
@@ -411,14 +400,11 @@ public class MainWindow : Window, IDisposable
                 File.WriteAllText(directory + "\\" + etroID + ".json", responseBody);
                 Gearset temp = etroGearToGearSet(etroJsonToObject(etroID, directory));
                 
-                
-                // this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
                 savedGearsets.Add(etroID, temp);
                 foreach (var invTypeEnum in itemSpace){
                     bisComparison(temp, invTypeEnum);
                 }
                 
-                // bisComparison(temp);
                 currentGearset = temp;
                 etroImportString = "";
 
@@ -427,8 +413,6 @@ public class MainWindow : Window, IDisposable
             }
             etroID = "";
         });
-
-        // this.currentGearset = etroGearToGearSet(etroJsonToObject(etroID, directory));
     }
 
     protected static EtroGearsetParse etroJsonToObject(string etroID, DirectoryInfo directory){
@@ -439,14 +423,12 @@ public class MainWindow : Window, IDisposable
     }
 
     protected static Gearset etroGearToGearSet(EtroGearsetParse inputGear){
-        //probably do materia adding here
         Gearset returnEtroGearset = new Gearset(inputGear);
         if (inputGear.materia != null){
-            returnEtroGearset.fillMateria(returnEtroGearset, inputGear.materia);
+            returnEtroGearset.fillMateria(inputGear.materia); 
         }
 
         return returnEtroGearset;
-        // return new Gearset(inputGear);
     }
     public void DrawItems(Gearset gearsetTest){
         Type type = gearsetTest.GetType();
@@ -455,7 +437,6 @@ public class MainWindow : Window, IDisposable
         float scale = ImGui.GetFontSize() / 17;
 
         foreach (PropertyInfo property in properties){
-            // string name = property.Name;
             object value = property.GetValue(gearsetTest);
 
             if (value == null){
@@ -468,13 +449,13 @@ public class MainWindow : Window, IDisposable
                 
                 var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
                 int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
+                
                 if (icon != null){
                     ImGui.Image(icon.ImGuiHandle, new Vector2(height, height));
                     ImGui.SameLine();
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
                 }
 
-                // ImGui.Text(rawItem.Name);
                 if (gearsetItem.hasPiece){
                     ImGui.TextColored(ImGuiColors.ParsedGreen, rawItem.Name);
                 }
@@ -508,19 +489,11 @@ public class MainWindow : Window, IDisposable
                         }
                     }
                 }
-                    
-                //test code for checkbox
-
-                // ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - 32);
-
-                // ImGui.Checkbox("", ref gearsetItem.hasPiece);
             }
         }
     }
     
     public void DrawDeleteButton(){
-        
-        // var color = System.Drawing.Color.FromArgb(217, 39, 39, 204);
         ImGui.PushStyleColor(ImGuiCol.Text, 0xFC5A5AFF); // EE6244FF
         
         if (ImGui.Button("Delete")){
@@ -537,8 +510,7 @@ public class MainWindow : Window, IDisposable
         return InventoryManager.Instance()->GetInventoryContainer(invTypeEnum);
     }
 
-    protected bool DrawDeletionConfirmationWindow(ref bool isVisible)
-    {
+    protected bool DrawDeletionConfirmationWindow(ref bool isVisible){
         if (!isVisible)
             return false;
 
@@ -546,29 +518,30 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SetNextWindowSize(ImGuiHelpers.ScaledVector2(280f, 120f));
         ImGui.Begin("Gearset Deletion Confirmation", ImGuiWindowFlags.NoResize);
-
         ImGui.Text("Are you sure you want to delete this?");
         ImGui.Text("This cannot be undone.");
         ImGui.PushStyleColor(ImGuiCol.Text, 0xFC5A5AFF);
-        if (ImGui.Button("Yes"))
-        {
+        
+        if (ImGui.Button("Yes")){
             isVisible = false;
             ret = true;
         }
+        
         ImGui.PopStyleColor();
-
         ImGui.SameLine();
-        if (ImGui.Button("No"))
-        {
+
+        if (ImGui.Button("No")){
             isVisible = false;
         }
 
         if (ret){
             savedGearsets.Remove(currentGearset.etroID);
             File.Delete(savedSetsDirectory + "\\" + currentGearset.etroID + ".json");
+            
             Plugin.Configuration.availableGearsets.Remove(currentGearset.etroID);
             Plugin.Configuration.lastSavedSet = "";
             Plugin.Configuration.Save();
+            
             if (savedGearsets.Count != 0){
                 currentGearset = savedGearsets.First().Value;
             }
@@ -583,7 +556,6 @@ public class MainWindow : Window, IDisposable
         return ret;
     }
     protected unsafe void bisComparison(Gearset givenGearset, InventoryType invTypeEnum){
-        
         InventoryContainer* inventory = GetInventoryContainer(invTypeEnum);
         
         if (inventory == null){
@@ -600,7 +572,7 @@ public class MainWindow : Window, IDisposable
             
             Type type = givenGearset.GetType();
             PropertyInfo[] properties = type.GetProperties();
-            // ExtendedItem rawItem = Data.ItemSheet.GetRow(id);
+
             foreach (PropertyInfo property in properties){
                 string name = property.Name;
                 object value = property.GetValue(givenGearset);
@@ -615,7 +587,6 @@ public class MainWindow : Window, IDisposable
                     
                     if (gearsetItem.itemID == id){
                         gearsetItem.hasPiece = true;
-                        // var materiaArray = item.Materia.ToArray();
 
                         for (byte materiaIndex = 0; materiaIndex < 5; materiaIndex++){
                             InGameMateria gameMateria = new InGameMateria(item.GetMateriaId(materiaIndex), item.GetMateriaGrade(materiaIndex));
@@ -624,14 +595,7 @@ public class MainWindow : Window, IDisposable
                             }
                         }
                         
-                        // var materiaID = item.GetMateriaId(0);
-                        // var materiaGrade = item.GetMateriaGrade(0);
-                        
-                        // gearsetItem.meldedMateria[0].tempMateriaID = materiaID;
-                        // gearsetItem.meldedMateria[0].grade = materiaGrade;
-
                         break;
-
                     }
 
                     if (rawItem.Name.RawString.Contains("Augmented")){
@@ -640,9 +604,7 @@ public class MainWindow : Window, IDisposable
                         var currentItemString = currentInvItem.Name.RawString.Split(" ").ToList();
                         
                         if (gearsetItemString[1] == currentItemString[0]){
-                            // gearsetItemString.Remove("Augmented");
                             gearsetItemString.Remove(gearsetItemString.First());
-                            // gearsetItemString.Remove();
                             
                             var sameItemType = true;
                             for(var j = 0; j < gearsetItemString.Count; j++){
@@ -698,54 +660,31 @@ public class MainWindow : Window, IDisposable
         return updatedCost;
     }
 
-    //different ways of calculating book costs
-    //buying everything with books, including gear pieces + glaze/twine (gear sheet default)
-    //buying only glaze/twine with books
     protected uint[] getInitialCost(Gearset givenGearset, bool buyTwineGlazeOnly){
         uint[] returnCost = new uint[5];
-
         Type type = givenGearset.GetType();
         PropertyInfo[] properties = type.GetProperties();
+
         foreach (PropertyInfo property in properties){
             string name = property.Name;
             object value = property.GetValue(givenGearset);
+            
             if (value == null || name == "offHand"){
                 continue;
             }
 
             if (property.PropertyType == typeof(MeldedItem)){
-                
                 MeldedItem gearsetItem = (MeldedItem)value;
                 ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
-
                 GearCost costOfItem = COST[name];
 
-                // if (!gearsetItem.hasPiece){
-                    costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
-                // }
-
-                // if (!gearsetItem.hasPiece){
-
-                // }
-
+                costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
             }
         }
-
         return returnCost;
     }
 
     protected void costHelperFunction(string name, ExtendedItem rawItem, GearCost costOfItem, bool buyTwineGlazeOnly, uint[] returnCost){
-        //the overall function should grab the cost of missing pieces
-
-        //if you don't have a gearset piece, add the cost of the piece with books, and the cost of its upgrade if its a tome piece.
-        // if it is a raid piece && we !buyTwineGlazeOnly, add cost of books
-        // if it is a tome piece && we !buyTwineGlazeOnly, add cost of books for upgrade + tome cost
-
-        //if it is a tome piece && we buyTwineGlazeOnly, add cost of books for upgrade + tome cost
-        // 
-        //
-
-
         if (name == "weapon" && buyTwineGlazeOnly){
             return;
         }
@@ -775,8 +714,6 @@ public class MainWindow : Window, IDisposable
                 ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
                 GearCost costOfItem = COST[name];
 
-                //ways of knowing what item is what
-                //if hasPiece then you have a raid or augmented tome piece, you can figure out which is which by a contains(Augmented) function.
                 if (gearsetItem.hasPiece){
                     if (!rawItem.Name.RawString.Contains("Augmented") && !buyTwineGlazeOnly){
                         playerGearCost.currentBookCost[costOfItem.bookType-1] += (uint)costOfItem.bookCost;
@@ -791,18 +728,10 @@ public class MainWindow : Window, IDisposable
                 else if (gearsetItem.hasUnaugmented){
                     playerGearCost.remainingTotalTomes += (uint)costOfItem.tomeCost;
                 }
-
-                //if its a raid piece, subtract the books IF and ONLY if !buyTwineGlaze only.
-                //if its a tome piece, subtract the books of its corresponding upgrade type  
-
-                //if !hasPiece && hasUnaugmented, subtract tomes only
-
             }        
-
         }
     }
 
-    //probably new functions to look for books/upgrade augs here
     protected unsafe void getCurrentBooksOrUpgrades(Gearset givenGearset, PlayerGearCost playerGearCost, bool buyTwineGlazeOnly){
         for (int i = 0; i <= 5; i++){
             InventoryContainer* inventory = GetInventoryContainer(itemSpace[i]);
@@ -821,73 +750,21 @@ public class MainWindow : Window, IDisposable
                 foreach (raidDropIDs raidDropID in Enum.GetValues(typeof(raidDropIDs))){
                     if (id == (uint)raidDropID){
                         if (id == (uint)raidDropIDs.Glaze){
-                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.GLAZE;
+                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.GLAZE * item.GetQuantity();
                         }
 
                         else if (id == (uint)raidDropIDs.Twine){
-                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE;
+                            playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE * item.GetQuantity();
                         }   
 
                         else{
                             playerGearCost.bookCount[raidDropIDToIndex[id]] = item.Quantity;
-                        }                    
+                        }   
+                        
+                        break;                 
                     }
                 }
-
-                // foreach (raidDropIDs raidDropID in Enum.GetValues(typeof(raidDropIDs))){
-                //     if ((uint)raidDropID == id){
-                //         if (id != (uint)raidDropIDs.Glaze && id != (uint)raidDropIDs.Twine){
-                //             playerGearCost.bookCount[raidDropIDToIndex[id]] = item.Quantity;
-                            
-                //         }
-
-                //         else{
-                //             if (id == (uint)raidDropIDs.Glaze){
-                //                 playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.GLAZE;
-                //             }
-
-                //             else if (id == (uint)raidDropIDs.Twine){
-                //                 playerGearCost.remainingBookCost[raidDropIDToIndex[id]] -= (uint)bookCost.TWINE_SOLVENT;
-                //             }
-                            
-                //         }
-                //         break;
-                //     }
-                // }
             }
         }
-        
-        // Type type = givenGearset.GetType();
-        // PropertyInfo[] properties = type.GetProperties();
-        // foreach (PropertyInfo property in properties){
-        //     string name = property.Name;
-        //     object value = property.GetValue(givenGearset);
-        //     if (value == null || name == "offHand"){
-        //         continue;
-        //     }
-
-        //     if (property.PropertyType == typeof(MeldedItem)){
-                
-        //         MeldedItem gearsetItem = (MeldedItem)value;
-        //         ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
-
-        //         GearCost costOfItem = COST[name];
-
-        //         if (gearsetItem.hasPiece){
-        //             if (name == "weapon" && buyTwineGlazeOnly){
-        //                 return;
-        //             }
-
-        //             if ((!buyTwineGlazeOnly) && !rawItem.Name.RawString.Contains("Augmented")){
-        //                 playerGearCost.remainingBookCost[costOfItem.bookType-1] -= (uint)costOfItem.bookCost;
-        //             }
-                    
-        //             else if (rawItem.Name.RawString.Contains("Augmented")){
-        //                 playerGearCost.remainingBookCost[costOfItem.bookUpgradeType-1] -= (uint)costOfItem.bookUpgradeCost;
-        //                 playerGearCost.remainingBookCost[4] -= (uint)costOfItem.tomeCost;
-        //             }
-        //         }
-        //     }
-        // }
     }
 }

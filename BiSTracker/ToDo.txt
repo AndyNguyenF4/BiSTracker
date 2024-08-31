@@ -25,6 +25,11 @@ Fix formatting
 Map small materia id + grade to stuff. Probably need an object to compile everything into. - COMPLETED
 Update README
 
+Stuff to fix
+Underflow for books
+Read quantity of twine/glazes since it's only doing it for a single instance of the item
+
+
 
 https://etro.gg/gearset/903fafde-f0bf-4e99-9d80-4aceab2d36f2 2.42
 https://etro.gg/gearset/9132ff2a-cdf8-499e-9e33-35d85aa61599 2.36
