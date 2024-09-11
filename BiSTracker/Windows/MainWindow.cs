@@ -23,12 +23,11 @@ public class MainWindow : Window, IDisposable
     private string GoatImagePath; //delete later
     private string etroImportString = "";
     private string etroID = "";
-    // private string[] etroImportStringSplit = new string[2];
     private static readonly HttpClient client = new HttpClient();
     private bool clickedDelete;
     private List<InventoryType> itemSpace;
     private DirectoryInfo savedSetsDirectory;
-    private Dictionary<ushort, InGameMateria> materiaIDMapping = new Dictionary<ushort, InGameMateria>{
+    private Dictionary<uint, InGameMateria> materiaIDMapping = new Dictionary<uint, InGameMateria>{
         [41781] = new InGameMateria(24, 11),
         [41782] = new InGameMateria(25, 11),
         [41771] = new InGameMateria(14, 11),
@@ -47,7 +46,7 @@ public class MainWindow : Window, IDisposable
     };
     
     //change ushort to uint later for materiaid
-    private Dictionary<ushort, string> materiaIDToName = new Dictionary<ushort, string>{
+    private Dictionary<uint, string> materiaIDToName = new Dictionary<uint, string>{
         [41772] = "CRT +54",
         [41771] = "DH +54",
         [41773] = "DET +54",
@@ -135,7 +134,13 @@ public class MainWindow : Window, IDisposable
         itemSpace = [InventoryType.SaddleBag1, InventoryType.SaddleBag2, InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4, InventoryType.EquippedItems, InventoryType.ArmoryOffHand, InventoryType.ArmoryMainHand, InventoryType.ArmoryHead, InventoryType.ArmoryBody, InventoryType.ArmoryHands, InventoryType.ArmoryLegs, InventoryType.ArmoryFeets, InventoryType.ArmoryEar, InventoryType.ArmoryNeck, InventoryType.ArmoryWrist, InventoryType.ArmoryRings];
 
         foreach (var set in plugin.Configuration.availableGearsets){
-            savedGearsets.Add(set, etroImport(set));
+            if (set.Contains("XIVGear_")){
+                savedGearsets.Add(set, xivGearToGearSet(xivGJSONToObject(set.Split("_")[1])));
+            }
+
+            else{
+                savedGearsets.Add(set, etroImport(set));
+            }
         }
 
         if (savedGearsets.Count > 0){
@@ -159,15 +164,19 @@ public class MainWindow : Window, IDisposable
     public void Dispose() {}
     public override void Draw()
     {
-        //etro links are 60 chars long, 61 for C# esc char?
+        //etro links are 60 chars long, 61 for C# esc char? 67 for xivgear
         ImGui.BeginGroup();
-        ImGui.InputTextWithHint("##EtroImportTextBox", "Insert Etro URL and click \"Import\"", ref etroImportString, 61);
+        ImGui.InputTextWithHint("##EtroImportTextBox", "Insert Etro URL and click \"Import\"", ref etroImportString, 68);
         ImGui.SameLine();
         if(ImGui.Button("Import" + "##EtroImportButton")){
         
             //if import string >= 0 then attempt to read etro link and then reset string
-            if(etroImportString.Length > 0){
+            if(etroImportString.Length > 0 && etroImportString.Contains("etro")){
                 etroImport(etroImportString, savedSetsDirectory);
+            }
+
+            else if(etroImportString.Length > 0 && etroImportString.Contains("xivgear")){
+                xivGearImport(etroImportString);
             }
         }
 
@@ -225,7 +234,6 @@ public class MainWindow : Window, IDisposable
         //clears gearsets saved in config
         // Plugin.Configuration.availableGearsets.Clear();
         // Plugin.Configuration.Save();
-
     }
 
     protected void drawBookAndTomes(){
@@ -366,17 +374,60 @@ public class MainWindow : Window, IDisposable
         var returnVal = InventoryManager.Instance()->GetTomestoneCount(id);
         return returnVal;
     }
-
 	protected ISharedImmediateTexture? GetIcon(Item? item, bool hq = false) {
 		if (item is not null)
 			return GetIcon(item.Icon, hq);
 		return null;
 	}
-
 	protected ISharedImmediateTexture GetIcon(uint id, bool hq = false) {
 		return Plugin.TextureProvider.GetFromGameIcon(new GameIconLookup(id, hq));
 	}
+    protected Gearset xivGearToGearSet(XIVGearsetParse inputGear){
+        Gearset returnGearset = new Gearset(inputGear);
+        returnGearset.fillMateria(inputGear); 
 
+        return returnGearset;
+    }
+    protected XIVGearsetParse xivGJSONToObject(string xivGearID){
+        string fullPath = savedSetsDirectory + "\\" + "XIVGear_" + xivGearID + ".json";
+        string jsonString = File.ReadAllText(fullPath);
+
+        return JsonSerializer.Deserialize<XIVGearsetParse>(jsonString); 
+    }
+    protected void xivGearImport(string xivGearURL){
+        var xivGearID = "";
+
+        if (!xivGearURL.Contains("https://xivgear.app/?page=sl%7C")){
+            return;
+        }
+
+        xivGearID = xivGearURL.Split("%7C")[1];
+
+        Task.Run(async () =>
+        {
+            using HttpResponseMessage response = await client.GetAsync("https://api.xivgear.app/shortlink/" + xivGearID);
+            string responseBody = await response.Content.ReadAsStringAsync();
+
+            if(response.IsSuccessStatusCode){
+                File.WriteAllText(savedSetsDirectory + "\\" + "XIVGear_" + xivGearID + ".json", responseBody);
+                Gearset temp = xivGearToGearSet(xivGJSONToObject(xivGearID));
+                var uniqueXIVGearID = "XIVGear_" + xivGearID;
+
+                savedGearsets.Add(uniqueXIVGearID, temp);
+                foreach (var invTypeEnum in itemSpace){
+                    bisComparison(temp, invTypeEnum);
+                }
+                
+                currentGearset = temp;
+                etroImportString = "";
+
+                Plugin.Configuration.availableGearsets.Add(uniqueXIVGearID);
+                Plugin.Configuration.lastSavedSet = uniqueXIVGearID;
+                Plugin.Configuration.Save();
+                etroImportString = "";
+            }
+        });
+    }
     protected Gearset etroImport(string etroID){
         return etroGearToGearSet(etroJsonToObject(etroID, savedSetsDirectory));
     }
@@ -409,19 +460,18 @@ public class MainWindow : Window, IDisposable
                 etroImportString = "";
 
                 Plugin.Configuration.availableGearsets.Add(etroID);
+                Plugin.Configuration.lastSavedSet = etroID;
                 Plugin.Configuration.Save();
             }
             etroID = "";
         });
     }
-
     protected static EtroGearsetParse etroJsonToObject(string etroID, DirectoryInfo directory){
         string fullPath = directory + "\\" + etroID + ".json";
         string jsonString = File.ReadAllText(fullPath);
 
         return JsonSerializer.Deserialize<EtroGearsetParse>(jsonString); 
     }
-
     protected static Gearset etroGearToGearSet(EtroGearsetParse inputGear){
         Gearset returnEtroGearset = new Gearset(inputGear);
         if (inputGear.materia != null){
@@ -479,20 +529,24 @@ public class MainWindow : Window, IDisposable
                             ImGui.SameLine();
                             ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);  
 
-                            if (gearsetItem.meldedMateria[j].hasMateria){
-                                ImGui.TextColored(ImGuiColors.ParsedGreen, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
-                            }
+                            try{
+                                if (gearsetItem.meldedMateria[j].hasMateria){
+                                    ImGui.TextColored(ImGuiColors.ParsedGreen, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
+                                }
 
-                            else{
-                                ImGui.TextColored(ImGuiColors.DalamudWhite, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
-                            }                         
+                                else{
+                                    ImGui.TextColored(ImGuiColors.DalamudWhite, materiaIDToName[gearsetItem.meldedMateria[j].materiaID].ToString()); 
+                                }    
+                            } 
+                            catch{
+                                ImGui.Spacing();
+                            }                    
                         }
                     }
                 }
             }
         }
     }
-    
     public void DrawDeleteButton(){
         ImGui.PushStyleColor(ImGuiCol.Text, 0xFC5A5AFF); // EE6244FF
         
@@ -505,11 +559,9 @@ public class MainWindow : Window, IDisposable
             DrawDeletionConfirmationWindow(ref clickedDelete);
         }
     }
-
     protected unsafe InventoryContainer* GetInventoryContainer(InventoryType invTypeEnum){
         return InventoryManager.Instance()->GetInventoryContainer(invTypeEnum);
     }
-
     protected bool DrawDeletionConfirmationWindow(ref bool isVisible){
         if (!isVisible)
             return false;
@@ -535,10 +587,12 @@ public class MainWindow : Window, IDisposable
         }
 
         if (ret){
-            savedGearsets.Remove(currentGearset.etroID);
-            File.Delete(savedSetsDirectory + "\\" + currentGearset.etroID + ".json");
+            var setName = Plugin.Configuration.lastSavedSet;
             
-            Plugin.Configuration.availableGearsets.Remove(currentGearset.etroID);
+            savedGearsets.Remove(setName);
+            File.Delete(savedSetsDirectory + "\\" + setName + ".json");
+            Plugin.Configuration.availableGearsets.Remove(setName);
+
             Plugin.Configuration.lastSavedSet = "";
             Plugin.Configuration.Save();
             
@@ -588,11 +642,17 @@ public class MainWindow : Window, IDisposable
                     if (gearsetItem.itemID == id){
                         gearsetItem.hasPiece = true;
 
-                        for (byte materiaIndex = 0; materiaIndex < 5; materiaIndex++){
-                            InGameMateria gameMateria = new InGameMateria(item.GetMateriaId(materiaIndex), item.GetMateriaGrade(materiaIndex));
-                            if((gearsetItem.meldedMateria[materiaIndex] != null) && materiaIDMapping[gearsetItem.meldedMateria[materiaIndex].materiaID].grade == gameMateria.grade && materiaIDMapping[gearsetItem.meldedMateria[materiaIndex].materiaID].materiaGameID == gameMateria.materiaGameID){
-                                gearsetItem.meldedMateria[materiaIndex].hasMateria = true;
+                        try{
+                            for (byte materiaIndex = 0; materiaIndex < 5; materiaIndex++){
+                                InGameMateria gameMateria = new InGameMateria(item.GetMateriaId(materiaIndex), item.GetMateriaGrade(materiaIndex));
+                                if((gearsetItem.meldedMateria[materiaIndex] != null) && materiaIDMapping[gearsetItem.meldedMateria[materiaIndex].materiaID].grade == gameMateria.grade && materiaIDMapping[gearsetItem.meldedMateria[materiaIndex].materiaID].materiaGameID == gameMateria.materiaGameID){
+                                    gearsetItem.meldedMateria[materiaIndex].hasMateria = true;
+                                }
                             }
+                        }
+
+                        catch{
+                           break; 
                         }
                         
                         break;
@@ -624,7 +684,6 @@ public class MainWindow : Window, IDisposable
             }
         }
     }
-
     protected int getTomes(Gearset givenGearset){
         int updatedCost = 0;
         
@@ -659,7 +718,6 @@ public class MainWindow : Window, IDisposable
 
         return updatedCost;
     }
-
     protected uint[] getInitialCost(Gearset givenGearset, bool buyTwineGlazeOnly){
         uint[] returnCost = new uint[5];
         Type type = givenGearset.GetType();
@@ -683,7 +741,6 @@ public class MainWindow : Window, IDisposable
         }
         return returnCost;
     }
-
     protected void costHelperFunction(string name, ExtendedItem rawItem, GearCost costOfItem, bool buyTwineGlazeOnly, uint[] returnCost){
         if (name == "weapon" && buyTwineGlazeOnly){
             return;
@@ -698,7 +755,6 @@ public class MainWindow : Window, IDisposable
             returnCost[4] += (uint)costOfItem.tomeCost;
         }
     }
-
     protected void calc(Gearset givenGearset, PlayerGearCost playerGearCost, bool buyTwineGlazeOnly){
         Type type = givenGearset.GetType();
         PropertyInfo[] properties = type.GetProperties();
@@ -731,7 +787,6 @@ public class MainWindow : Window, IDisposable
             }        
         }
     }
-
     protected unsafe void getCurrentBooksOrUpgrades(Gearset givenGearset, PlayerGearCost playerGearCost, bool buyTwineGlazeOnly){
         for (int i = 0; i <= 5; i++){
             InventoryContainer* inventory = GetInventoryContainer(itemSpace[i]);

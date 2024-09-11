@@ -1,6 +1,5 @@
 using System.Numerics;
 using Dalamud.Interface.Colors;
-using static BiSTracker.Windows.MainWindow;
 namespace BiSTracker.Models;
 //remove tome vars unless implementing in game reading of tomes
 public struct PlayerGearCost{
