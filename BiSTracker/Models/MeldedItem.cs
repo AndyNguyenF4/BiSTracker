@@ -1,4 +1,7 @@
-using BiSTracker.Sheets;
+// using BiSTracker.Sheets;
+// using Dalamud.Storage.Assets;
+using Lumina.Excel.Sheets;
+
 
 namespace BiSTracker.Models;
 
@@ -15,9 +18,9 @@ public class MeldedItem{
 	public bool hasPiece;
 	public bool hasUnaugmented;
 
-	public ExtendedItem? Row() {
-		if (!Data.CheckSheets())
+	public Item? Row() {
+		if (!Data.CheckSheets() || !Data.ItemSheet.TryGetRow(itemID, out var row))
 			return null;
-		return Data.ItemSheet.GetRow(itemID);
+		return row;
 	}
 };

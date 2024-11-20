@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using BiSTracker.Models;
-using BiSTracker.Sheets;
+
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 
 
 namespace BiSTracker;
@@ -10,8 +10,8 @@ namespace BiSTracker;
 //might need classsheet later we'll see?
 internal static partial class Data{
 
-    internal static ExcelSheet<ExtendedItem>? ItemSheet { get; set; }
-    internal static ExcelSheet<ExtendedItemLevel>? LevelSheet { get; set; }
+    internal static ExcelSheet<Item>? ItemSheet { get; set; }
+    internal static ExcelSheet<ItemLevel>? LevelSheet { get; set; }
     internal static ExcelSheet<Materia>? MateriaSheet { get; set; }
     internal static ExcelSheet<ItemFood>? FoodSheet { get; set; }
     internal static ExcelSheet<TomestonesItem>? TomestonesSheet {get;set;}
@@ -32,9 +32,9 @@ internal static partial class Data{
     }
 
     internal static void LoadSheets(ExcelModule excel){
-        ItemSheet = excel.GetSheet<ExtendedItem>();
+        ItemSheet = excel.GetSheet<Item>();
         FoodSheet = excel.GetSheet<ItemFood>();
-        LevelSheet = excel.GetSheet<ExtendedItemLevel>();
+        LevelSheet = excel.GetSheet<ItemLevel>();
         MateriaSheet = excel.GetSheet<Materia>();
         TomestonesSheet = excel.GetSheet<TomestonesItem>();
     }

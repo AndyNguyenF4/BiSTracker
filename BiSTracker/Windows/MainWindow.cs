@@ -5,8 +5,6 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using BiSTracker.Models;
-using BiSTracker.Sheets;
-using Lumina.Excel.GeneratedSheets;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Colors;
 using System.IO;
@@ -16,6 +14,7 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using Lumina.Excel.Sheets;
 
 namespace BiSTracker.Windows;
 public class MainWindow : Window, IDisposable
@@ -184,12 +183,10 @@ public class MainWindow : Window, IDisposable
         if(ImGui.Button("Inventory Sync##SyncButton")){
             if (savedGearsets != null){
                 if (savedGearsets.Count > 0){
-                    clearItemFlags();
+                    clearItemFlags(0, 0);
                 }
             }
         }
-
-        // ImGui.Combo(); //string label, ref int current_item, string[] items, int items_count (items.length)
 
         drawDropdown();
         
@@ -336,7 +333,7 @@ public class MainWindow : Window, IDisposable
         }
     }
 
-    protected void clearItemFlags(){
+    protected void clearItemFlags(int type1, int code){
         if (savedGearsets != null){
             if (savedGearsets.Count > 0){
                 foreach (KeyValuePair<string, Gearset> kvp in savedGearsets){
@@ -369,14 +366,18 @@ public class MainWindow : Window, IDisposable
             }
         }
     }
+
     protected unsafe uint getCurrentTomes(){
-        uint id = Data.TomestonesSheet.Where(tomestone => tomestone.Tomestones.Row is 3).First().Item.Row;
-        var returnVal = InventoryManager.Instance()->GetTomestoneCount(id);
+        //uint id = Data.TomestonesSheet.Where(tomestone => tomestone.Tomestones.RowId is 3).First().Item.RowId;
+
+        uint id = Data.TomestonesSheet.First(item => item.Tomestones.RowId is 3).Item.RowId;
+
+        var returnVal = (uint)InventoryManager.Instance()->GetInventoryItemCount(id);
         return returnVal;
     }
 	protected ISharedImmediateTexture? GetIcon(Item? item, bool hq = false) {
 		if (item is not null)
-			return GetIcon(item.Icon, hq);
+			return GetIcon(item.Value.Icon, hq);
 		return null;
 	}
 	protected ISharedImmediateTexture GetIcon(uint id, bool hq = false) {
@@ -495,7 +496,7 @@ public class MainWindow : Window, IDisposable
 
             if (property.PropertyType == typeof(MeldedItem)){
                 MeldedItem gearsetItem = (MeldedItem)value;
-                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); 
+                var rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID); 
                 
                 var icon = GetIcon(rawItem)?.GetWrapOrEmpty();
                 int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
@@ -507,22 +508,23 @@ public class MainWindow : Window, IDisposable
                 }
 
                 if (gearsetItem.hasPiece){
-                    ImGui.TextColored(ImGuiColors.ParsedGreen, rawItem.Name);
+                    ImGui.TextColored(ImGuiColors.ParsedGreen, rawItem.Name.ExtractText().ToString());
                 }
 
                 else if (gearsetItem.hasUnaugmented){
-                    ImGui.TextColored(ImGuiColors.DalamudYellow, rawItem.Name);
+                    ImGui.TextColored(ImGuiColors.DalamudYellow, rawItem.Name.ExtractText().ToString());
                 }
 
                 else{
-                    ImGui.TextColored(ImGuiColors.DalamudWhite, rawItem.Name);
+                    ImGui.TextColored(ImGuiColors.DalamudWhite, rawItem.Name.ExtractText().ToString());
                 }
 
-                if (rawItem.ExtendedItemLevel.Value is ExtendedItemLevel level){
+                if (rawItem.LevelItem.IsValid){
+                    var level = rawItem.LevelItem.RowId;
                     ImGui.SameLine();
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
                     
-                    ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level.RowId}");
+                    ImGui.TextColored(ImGuiColors.ParsedGrey, $"i{level}");
 
                     for (var j = 0; j < gearsetItem.meldedMateria.Length; j++){
                         if (gearsetItem.meldedMateria[j] != null){
@@ -637,7 +639,7 @@ public class MainWindow : Window, IDisposable
 
                 if (property.PropertyType == typeof(MeldedItem)){
                     MeldedItem gearsetItem = (MeldedItem)value;
-                    ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                    var rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
                     
                     if (gearsetItem.itemID == id){
                         gearsetItem.hasPiece = true;
@@ -658,10 +660,11 @@ public class MainWindow : Window, IDisposable
                         break;
                     }
 
-                    if (rawItem.Name.RawString.Contains("Augmented")){
-                        ExtendedItem currentInvItem = Data.ItemSheet.GetRow(id);
-                        var gearsetItemString = rawItem.Name.RawString.Split(" ").ToList();
-                        var currentItemString = currentInvItem.Name.RawString.Split(" ").ToList();
+                    if (rawItem.Name.ExtractText().ToString().Contains("Augmented")){
+                        var currentInvItem = Data.ItemSheet.GetRow(id);
+                        var gearsetItemString = rawItem.Name.ExtractText().ToString().Split(" ").ToList();
+                        var currentItemString = currentInvItem.Name.ExtractText().ToString().Split(" ").ToList();
+
                         
                         if (gearsetItemString[1] == currentItemString[0]){
                             gearsetItemString.Remove(gearsetItemString.First());
@@ -699,12 +702,12 @@ public class MainWindow : Window, IDisposable
 
             if (property.PropertyType == typeof(MeldedItem)){
                 MeldedItem gearsetItem = (MeldedItem)value;
-                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                var rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
                 GearCost costOfItem = COST[name];
 
                 if (gearsetItem.hasPiece){
                     
-                    if (rawItem.Name.RawString.Contains("Augmented")){
+                    if (rawItem.Name.ExtractText().ToString().Contains("Augmented")){
                         updatedCost += (int)costOfItem.tomeCost;
                     }
                 }
@@ -733,7 +736,7 @@ public class MainWindow : Window, IDisposable
 
             if (property.PropertyType == typeof(MeldedItem)){
                 MeldedItem gearsetItem = (MeldedItem)value;
-                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                var rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
                 GearCost costOfItem = COST[name];
 
                 costHelperFunction(name, rawItem, costOfItem, buyTwineGlazeOnly, returnCost);
@@ -741,16 +744,16 @@ public class MainWindow : Window, IDisposable
         }
         return returnCost;
     }
-    protected void costHelperFunction(string name, ExtendedItem rawItem, GearCost costOfItem, bool buyTwineGlazeOnly, uint[] returnCost){
+    protected void costHelperFunction(string name, Item rawItem, GearCost costOfItem, bool buyTwineGlazeOnly, uint[] returnCost){
         if (name == "weapon" && buyTwineGlazeOnly){
             return;
         }
 
-        if ((!buyTwineGlazeOnly) && !rawItem.Name.RawString.Contains("Augmented")){
+        if ((!buyTwineGlazeOnly) && !rawItem.Name.ExtractText().ToString().Contains("Augmented")){
             returnCost[costOfItem.bookType-1] += (uint)costOfItem.bookCost;
         }
         
-        else if (rawItem.Name.RawString.Contains("Augmented")){
+        else if (rawItem.Name.ExtractText().ToString().Contains("Augmented")){
             returnCost[costOfItem.bookUpgradeType-1] += (uint)costOfItem.bookUpgradeCost;
             returnCost[4] += (uint)costOfItem.tomeCost;
         }
@@ -767,15 +770,15 @@ public class MainWindow : Window, IDisposable
 
             if (property.PropertyType == typeof(MeldedItem)){   
                 MeldedItem gearsetItem = (MeldedItem)value;
-                ExtendedItem rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
+                var rawItem = Data.ItemSheet.GetRow(gearsetItem.itemID);
                 GearCost costOfItem = COST[name];
 
                 if (gearsetItem.hasPiece){
-                    if (!rawItem.Name.RawString.Contains("Augmented") && !buyTwineGlazeOnly){
+                    if (!rawItem.Name.ExtractText().ToString().Contains("Augmented") && !buyTwineGlazeOnly){
                         playerGearCost.currentBookCost[costOfItem.bookType-1] += (uint)costOfItem.bookCost;
                     }
 
-                    else if (rawItem.Name.RawString.Contains("Augmented")){
+                    else if (rawItem.Name.ExtractText().ToString().Contains("Augmented")){
                         playerGearCost.currentBookCost[costOfItem.bookUpgradeType-1] += (uint)costOfItem.bookUpgradeCost;
 
                     }
@@ -813,7 +816,7 @@ public class MainWindow : Window, IDisposable
                         }   
 
                         else{
-                            playerGearCost.bookCount[raidDropIDToIndex[id]] = item.Quantity;
+                            playerGearCost.bookCount[raidDropIDToIndex[id]] = (uint)item.Quantity;
                         }   
                         
                         break;                 

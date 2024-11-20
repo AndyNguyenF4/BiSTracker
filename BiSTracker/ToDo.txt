@@ -7,7 +7,7 @@ Highlight green/red over gear or use a checkmark to indicate having pieces of Bi
 ^ requires grabbing and reading player's current gear/inventory (FINISH READING ALL INVENTORY SLOTS NOT JUST EQUIPPED ITEMS) COMPLETED
 Display total and/or remaining tomes and/or weeks of capping - COMPLETED
 Display total and/or remaining books for twine/glazes - COMPLETED
-Support import from XIVGear.app
+Support import from XIVGear.app - COMPLETED
 Reload gearsets on difference chars? -> reset hasPiece/isUnaugmented - COMPLETED
 Save last loaded set name to load in on launch instead of loading first set saved - COMPLETED
 

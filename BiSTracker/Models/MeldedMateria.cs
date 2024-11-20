@@ -1,4 +1,5 @@
-using Lumina.Excel.GeneratedSheets;
+// using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 
 namespace BiSTracker.Models;
 
@@ -12,9 +13,9 @@ public class MeldedMateria{
 	public bool hasMateria;
 
 	public Materia? Row() {
-		if (!Data.CheckSheets())
+		if (!Data.CheckSheets() || !Data.MateriaSheet.TryGetRow(materiaID, out var row))
 			return null;
-		return Data.MateriaSheet.GetRow(materiaID);
+		return row;
 	}
 
 }

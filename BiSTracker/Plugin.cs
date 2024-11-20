@@ -16,19 +16,17 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
-
     [PluginService] internal IClientState ClientState { get; init; }
-
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!; //gets lumina object
 
     private const string CommandName = "/bis";
+
     public Configuration Configuration { get; init; }
+    private DirectoryInfo ConfigDirectory;
 
     public readonly WindowSystem WindowSystem = new("BiSTracker");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
-
-    private DirectoryInfo ConfigDirectory;
 
     public Plugin()
     {
@@ -79,7 +77,6 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void DrawUI() => WindowSystem.Draw();
-
     public void ToggleConfigUI() => ConfigWindow.Toggle();
     public void ToggleMainUI() => MainWindow.Toggle();
 }
