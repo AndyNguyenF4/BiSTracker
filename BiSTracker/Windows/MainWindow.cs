@@ -63,12 +63,12 @@ public class MainWindow : Window, IDisposable
         [41757] = "PIE +18"
     };
     private enum raidDropIDs : int{
-        Book1 = 43549,
-        Book2 = 43550,
-        Book3 = 43551,
-        Book4 = 43552,
-        Glaze = 43555,
-        Twine = 43554,
+        Book1 = 46732,
+        Book2 = 46733,
+        Book3 = 46734,
+        Book4 = 46735,
+        Glaze = 46731,
+        Twine = 46730,
     };
 
     private Dictionary<uint, uint> raidDropIDToIndex = new Dictionary<uint, uint>{
