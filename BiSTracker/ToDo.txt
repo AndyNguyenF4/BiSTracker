@@ -1,34 +1,17 @@
-Base Functionality
-Take in an Etro Link - COMPLETED
-Display Etro Gearset in Window - COMPLETED
+KNOWN ISSUES
+Does not account for dupe rings like double crafted
+Only reads materia in order of slots (fix later)
 
-EXTRA Functionality
-Highlight green/red over gear or use a checkmark to indicate having pieces of BiS - COMPLETE
-^ requires grabbing and reading player's current gear/inventory (FINISH READING ALL INVENTORY SLOTS NOT JUST EQUIPPED ITEMS) COMPLETED
-Display total and/or remaining tomes and/or weeks of capping - COMPLETED
-Display total and/or remaining books for twine/glazes - COMPLETED
-Support import from XIVGear.app - COMPLETED
-Reload gearsets on difference chars? -> reset hasPiece/isUnaugmented - COMPLETED
-Save last loaded set name to load in on launch instead of loading first set saved - COMPLETED
 
 Current Tasks
-Parse JSON and input gear into gearset/melded item/melded materia structs - COMPLETED
-Make a menu to access saved gearsets/JSONs and a way to delete them - COMPLETED
-Config to load in sets on initial launch - COMPLETED?
-Convert Collapsible Header for gearset selection to dropdown? - COMPLETED
 Add in a disclaimer that retainers aren't read and relic support isn't added.
-Check inv to display books for left of / and subtract from right of / if twine/glazes are present - COMPLETED
-Move delete gearset button next to gear dropdown - COMPLETED
-If changing chars, reset hasPiece/isUnaugmented to false - COMPLETED
-Display said gearset with melds in the main window - COMPLETED
 Fix formatting 
-Map small materia id + grade to stuff. Probably need an object to compile everything into. - COMPLETED
 Update README
+
 
 Stuff to fix
 Underflow for books
 Read quantity of twine/glazes since it's only doing it for a single instance of the item
-
 
 
 https://etro.gg/gearset/903fafde-f0bf-4e99-9d80-4aceab2d36f2 2.42
