@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Numerics;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using BiSTracker.Models;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Colors;
@@ -220,7 +220,7 @@ public class MainWindow : Window, IDisposable
         if (goatImage != null)
         {
             ImGuiHelpers.ScaledIndent(55f);
-            ImGui.Image(goatImage.ImGuiHandle, new Vector2(goatImage.Width, goatImage.Height));
+            ImGui.Image(goatImage.Handle, new Vector2(goatImage.Width, goatImage.Height));
             ImGuiHelpers.ScaledIndent(-55f);
         }
         else
@@ -502,7 +502,7 @@ public class MainWindow : Window, IDisposable
                 int height = icon is null ? 0 : Math.Min(icon.Height, (int) (32 * scale));
                 
                 if (icon != null){
-                    ImGui.Image(icon.ImGuiHandle, new Vector2(height, height));
+                    ImGui.Image(icon.Handle, new Vector2(height, height));
                     ImGui.SameLine();
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (height - ImGui.GetFontSize()) / 2);
                 }

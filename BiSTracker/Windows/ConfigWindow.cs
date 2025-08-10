@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
+using static Dalamud.Bindings.ImGui.ImGuiWindowFlags;
 
 namespace BiSTracker.Windows;
 
