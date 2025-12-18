@@ -398,11 +398,11 @@ public class MainWindow : Window, IDisposable
     protected void xivGearImport(string xivGearURL){
         var xivGearID = "";
 
-        if (!xivGearURL.Contains("https://xivgear.app/?page=sl%7C")){
+        if (!xivGearURL.Contains("https://xivgear.app/?page=sl|")){
             return;
         }
 
-        xivGearID = xivGearURL.Split("%7C")[1];
+        xivGearID = xivGearURL.Split("?page=sl|")[1];
 
         Task.Run(async () =>
         {
