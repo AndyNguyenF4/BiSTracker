@@ -67,7 +67,7 @@ public class MainWindow : Window, IDisposable
         Book2 = 49761,
         Book3 = 49762,
         Book4 = 49763,
-        Glaze = 49757,
+        Glaze = 49759,
         Twine = 49758,
     };
 
