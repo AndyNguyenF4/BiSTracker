@@ -2,7 +2,7 @@
   "Author": "Andu Nguyen",
   "Name": "BiSTracker",
   "InternalName": "BiSTracker",
-  "AssemblyVersion": "0.0.0.8",
+  "AssemblyVersion": "0.0.0.9",
   "Description": "Tracks your BiS in game after importing from Etro/XIVGear.",
   "ApplicableVersion": "any",
   "RepoUrl": "https://github.com/AndyNguyenF4/BiSTracker",
@@ -11,7 +11,7 @@
     "Tracker",
     "Gearset"
   ],
-  "DalamudApiLevel": 13,
+  "DalamudApiLevel": 14,
   "LoadRequiredState": 0,
   "LoadSync": false,
   "CanUnloadAsync": false,
