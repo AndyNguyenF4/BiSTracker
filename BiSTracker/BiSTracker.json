@@ -2,7 +2,7 @@
   "Author": "Andu Nguyen",
   "Name": "BiSTracker",
   "InternalName": "BiSTracker",
-  "AssemblyVersion": "0.0.0.9",
+  "AssemblyVersion": "0.0.1.0",
   "Description": "Tracks your BiS in game after importing from Etro/XIVGear.",
   "ApplicableVersion": "any",
   "RepoUrl": "https://github.com/AndyNguyenF4/BiSTracker",
